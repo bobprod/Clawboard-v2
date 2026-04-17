@@ -12,6 +12,18 @@ function getToken(): string {
   return localStorage.getItem('clawboard-token') ?? ENV_TOKEN;
 }
 
+/** Structured API error with status code, message, and optional validation details. */
+export class ApiError extends Error {
+  status: number;
+  details?: string[];
+  constructor(status: number, message: string, details?: string[]) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.details = details;
+  }
+}
+
 export async function apiFetch(url: string, init: RequestInit = {}): Promise<Response> {
   const token = getToken();
   if (!token) return fetch(url, init);
@@ -24,4 +36,39 @@ export async function apiFetch(url: string, init: RequestInit = {}): Promise<Res
     window.location.href = '/';
   }
   return res;
+}
+
+/**
+ * apiFetchJson<T> — fetch + parse JSON with structured error handling.
+ * Returns { data, error, status } instead of throwing.
+ */
+export async function apiFetchJson<T = unknown>(
+  url: string,
+  init: RequestInit = {},
+): Promise<{ data: T | null; error: string | null; status: number; details?: string[] }> {
+  try {
+    const res = await apiFetch(url, init);
+    const status = res.status;
+    if (!res.ok) {
+      try {
+        const body = await res.json();
+        return {
+          data: null,
+          error: body.error || body.message || `HTTP ${status}`,
+          status,
+          details: body.details,
+        };
+      } catch {
+        return { data: null, error: `HTTP ${status}`, status };
+      }
+    }
+    const data = (await res.json()) as T;
+    return { data, error: null, status };
+  } catch (err) {
+    return {
+      data: null,
+      error: err instanceof Error ? err.message : 'Network error',
+      status: 0,
+    };
+  }
 }

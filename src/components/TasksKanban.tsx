@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { mockAgents } from '../data/mockData';
+import { useState, useEffect, useCallback } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+
 import type { Task } from '../data/mockData';
 import { useSSE } from '../hooks/useSSE';
 import { api } from '../hooks/useApi';
@@ -9,7 +9,7 @@ import { apiFetch } from '../lib/apiFetch';
 const BASE = 'http://localhost:4000';
 
 interface Agent { id: string; name: string; }
-import { Play, CheckCircle2, AlertTriangle, Clock, Plus, Zap, GripVertical, MoreVertical, Copy, PauseCircle, Trash2, Eye } from 'lucide-react';
+import { Play, CheckCircle2, AlertTriangle, Clock, Plus, Zap, GripVertical, MoreVertical, Copy, PauseCircle, Trash2, Eye, RotateCcw } from 'lucide-react';
 import { Dropdown } from './Dropdown';
 
 type ColStatus = 'planned' | 'running' | 'completed' | 'failed' | 'pending';
@@ -29,10 +29,12 @@ const STATUS_MAP: Record<string, ColStatus> = {
 };
 
 export const TasksKanban = () => {
+  const navigate = useNavigate();
   const [filterAgent, setFilterAgent]   = useState<string>('all');
   const [dragTaskId, setDragTaskId]     = useState<string | null>(null);
   const [dropTarget, setDropTarget]     = useState<string | null>(null);
   const [agents, setAgents]             = useState<Agent[]>([]);
+  const [toast, setToast]               = useState<{ msg: string; color: string } | null>(null);
 
   useEffect(() => {
     apiFetch(`${BASE}/api/agents`)
@@ -40,16 +42,59 @@ export const TasksKanban = () => {
       .then((data: Agent[]) => {
         if (Array.isArray(data) && data.length > 0) setAgents(data);
       })
-      .catch(() => { setAgents(mockAgents); }); // graceful fallback: utilise mockAgents si API indisponible
+      .catch(() => { setAgents([]); }); // graceful fallback: degraded mode (empty)
   }, []);
 
   const { data: liveTasks } = useSSE<Task[] | null>('/api/tasks?stream=1', null);
-  const [localTasks, setLocalTasks]     = useState<Task[] | null>(null);
+  const [optimisticOverrides, setOptimisticOverrides] = useState<Record<string, any>>({});
 
-  // Prefer live tasks; fall back to local optimistic state while dragging
-  const tasks: Task[] = localTasks ?? liveTasks ?? [];
+  // Merge live tasks with our fast optimistic overrides so SSE isn't blocked
+  const tasks: Task[] = (liveTasks ?? []).map(t => 
+    optimisticOverrides[t.id] ? { ...t, ...optimisticOverrides[t.id] } : t
+  );
 
-  const filtered = tasks.filter(t => filterAgent === 'all' || t.agentId === filterAgent);
+  const showToast = useCallback((msg: string, color = '#10b981') => {
+    setToast({ msg, color });
+    setTimeout(() => setToast(null), 3000);
+  }, []);
+
+  // ── Card Actions ────────────────────────────────────────────────────────
+  const handleDelete = useCallback(async (task: Task) => {
+    if (!confirm(`Supprimer la tâche "${task.title}" ?`)) return;
+    try {
+      setOptimisticOverrides(prev => ({ ...prev, [task.id]: { _deleted: true } }));
+      await apiFetch(`${BASE}/api/tasks/${task.id}`, { method: 'DELETE' });
+      showToast(`Tâche "${task.title}" supprimée`, '#ef4444');
+      setTimeout(() => {
+        setOptimisticOverrides(prev => { const n={...prev}; delete n[task.id]; return n; });
+      }, 1500);
+    } catch { showToast('Erreur suppression', '#ef4444'); }
+  }, [showToast]);
+
+  const handleClone = useCallback((task: Task) => {
+    navigate('/tasks/new', { state: { prefill: { ...task, title: `${task.title} (copie)` } } });
+  }, [navigate]);
+
+  const handlePause = useCallback(async (task: Task) => {
+    const newStatus = task.status === 'running' ? 'pending' : 'running';
+    setOptimisticOverrides(prev => ({ ...prev, [task.id]: { status: newStatus } }));
+    try {
+      await api.patchTask(task.id, { status: newStatus });
+      showToast(newStatus === 'pending' ? 'Tâche mise en pause' : 'Tâche relancée');
+      setTimeout(() => {
+        setOptimisticOverrides(prev => { const n={...prev}; delete n[task.id]; return n; });
+      }, 1500);
+    } catch { showToast('Erreur', '#ef4444'); }
+  }, [showToast]);
+
+  const handleRetry = useCallback(async (task: Task) => {
+    try {
+      await apiFetch(`${BASE}/api/tasks/${task.id}/run`, { method: 'POST' });
+      showToast(`Tâche "${task.title}" relancée`);
+    } catch { showToast('Erreur relance', '#ef4444'); }
+  }, [showToast]);
+
+  const filtered = tasks.filter(t => (filterAgent === 'all' || t.agentId === filterAgent) && !(t as any)._deleted);
   const getCol   = (statuses: string[]) => filtered.filter(t => statuses.includes(t.status));
 
   // ── Drag & Drop ──────────────────────────────────────────────────────────
@@ -73,25 +118,25 @@ export const TasksKanban = () => {
     const newStatus = STATUS_MAP[colTitle];
     if (!newStatus) return;
 
-    // Optimistic update
-    const updated = tasks.map(t =>
-      t.id === dragTaskId
-        ? { ...t, status: newStatus as Task['status'], ...(newStatus === 'running' ? { startedAt: new Date().toISOString() } : {}), ...(newStatus === 'completed' ? { completedAt: new Date().toISOString() } : {}) }
-        : t
-    );
-    setLocalTasks(updated);
+    // Optimistic update without blocking SSE
+    const updatePayload = { 
+      status: newStatus as Task['status'], 
+      ...(newStatus === 'running' ? { startedAt: new Date().toISOString() } : {}), 
+      ...(newStatus === 'completed' ? { completedAt: new Date().toISOString() } : {}) 
+    };
+    
+    setOptimisticOverrides(prev => ({ ...prev, [dragTaskId]: updatePayload }));
     setDragTaskId(null);
 
     // Persist to backend
     try {
-      await api.patchTask(dragTaskId, {
-        status: newStatus,
-        ...(newStatus === 'running'   ? { startedAt: new Date().toISOString() }   : {}),
-        ...(newStatus === 'completed' ? { completedAt: new Date().toISOString() } : {}),
-      });
-      setLocalTasks(null); // let SSE take over
+      await api.patchTask(dragTaskId, updatePayload);
+      setTimeout(() => {
+        setOptimisticOverrides(prev => { const n={...prev}; delete n[dragTaskId]; return n; });
+      }, 1500);
     } catch {
-      setLocalTasks(null); // revert to SSE data
+      // revert mapping
+      setOptimisticOverrides(prev => { const n={...prev}; delete n[dragTaskId]; return n; });
     }
   };
 
@@ -228,10 +273,11 @@ export const TasksKanban = () => {
                                 </div>
                               }
                               items={[
-                                { icon: Eye, label: 'Ouvrir les détails', onClick: () => console.log('Ouvrir', task.id) },
-                                { icon: PauseCircle, label: 'Mettre en pause', onClick: () => console.log('Pause', task.id) },
-                                { icon: Copy, label: 'Cloner la tâche', onClick: () => console.log('Dupliquer', task.id) },
-                                { icon: Trash2, label: 'Supprimer', danger: true, onClick: () => console.log('Supprimer', task.id) }
+                                { icon: Eye, label: 'Ouvrir les détails', onClick: () => navigate(`/tasks/${task.id}`) },
+                                ...(task.status === 'running' ? [{ icon: PauseCircle, label: 'Mettre en pause', onClick: () => handlePause(task) }] : []),
+                                ...(task.status === 'failed' ? [{ icon: RotateCcw, label: 'Réessayer', onClick: () => handleRetry(task) }] : []),
+                                { icon: Copy, label: 'Cloner la tâche', onClick: () => handleClone(task) },
+                                { icon: Trash2, label: 'Supprimer', danger: true, onClick: () => handleDelete(task) }
                               ]}
                             />
                           </div>
@@ -263,6 +309,12 @@ export const TasksKanban = () => {
                   </div>
                 ))}
 
+                {getCol(col.status).length === 0 && !isTarget && (
+                  <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px', opacity: 0.6 }}>
+                    Aucune tâche
+                  </div>
+                )}
+
                 {isTarget && (
                   <div style={{
                     border: `2px dashed ${col.color}`, borderRadius: '12px', padding: '20px',
@@ -277,6 +329,21 @@ export const TasksKanban = () => {
           );
         })}
       </div>
+
+      {/* Toast */}
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
+          padding: '12px 20px', borderRadius: 10,
+          background: 'var(--bg-surface-elevated)', border: `1px solid ${toast.color}`,
+          color: toast.color, fontWeight: 600, fontSize: '0.85rem',
+          boxShadow: `0 4px 20px rgba(0,0,0,0.4)`,
+          animation: 'fadeInUp 0.3s ease',
+        }}>
+          {toast.msg}
+        </div>
+      )}
+      <style>{`@keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }`}</style>
     </div>
   );
 };

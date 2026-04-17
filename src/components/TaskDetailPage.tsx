@@ -1,12 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useEffect, useRef, useState, useMemo } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useSSE } from '../hooks/useSSE';
 import { apiFetch } from '../lib/apiFetch';
 import type { Task } from '../data/mockData';
 import {
   ArrowLeft, Terminal, Clock, Zap, Shield, MoreVertical, Trash2,
   Wifi, WifiOff, RefreshCw, CheckCircle2, AlertTriangle, Play,
-  Copy, Check,
+  Copy, Check, Search, Pause, Download, Filter, RotateCcw,
 } from 'lucide-react';
 import { Dropdown } from './Dropdown';
 
@@ -93,6 +93,19 @@ function MarkdownOutput({ text }: { text: string }) {
   );
 }
 
+function highlightMatch(text: string, query: string): React.ReactNode {
+  if (!query) return text;
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return text;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <span style={{ background: 'rgba(245,158,11,0.3)', borderRadius: '2px', padding: '0 1px' }}>{text.slice(idx, idx + query.length)}</span>
+      {text.slice(idx + query.length)}
+    </>
+  );
+}
+
 function renderInline(text: string): React.ReactNode {
   // Bold **text**
   const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
@@ -105,6 +118,7 @@ function renderInline(text: string): React.ReactNode {
 
 export const TaskDetailPage = () => {
   const { taskId } = useParams();
+  const navigate = useNavigate();
   const [richTask, setRichTask] = useState<RichTask | null>(null);
   const [activeExec, setActiveExec] = useState<string | null>(null);
   const [copiedLogs, setCopiedLogs] = useState(false);
@@ -112,6 +126,10 @@ export const TaskDetailPage = () => {
   const terminalRef = useRef<HTMLDivElement>(null);
   const [logs, setLogs] = useState<{ line: string; ts: string }[]>([]);
   const [logConnected, setLogConnected] = useState(false);
+  const [logSearch, setLogSearch] = useState('');
+  const [logPaused, setLogPaused] = useState(false);
+  const [logLevel, setLogLevel] = useState<string>('all');
+  const pausedLogsRef = useRef<{ line: string; ts: string }[]>([]);
 
   const { data: liveTasks } = useSSE<Task[] | null>('/api/tasks?stream=1', null);
 
@@ -137,12 +155,63 @@ export const TaskDetailPage = () => {
   useEffect(() => {
     if (!taskId) return;
     setLogs([]);
+    pausedLogsRef.current = [];
     const es = new EventSource(`${BASE}/api/logs/${taskId}`);
     es.onopen = () => setLogConnected(true);
-    es.onmessage = e => { try { setLogs(p => [...p, JSON.parse(e.data)]); } catch (_) {} };
+    es.onmessage = e => {
+      try {
+        const entry = JSON.parse(e.data);
+        if (logPaused) { pausedLogsRef.current.push(entry); }
+        else { setLogs(p => [...p, entry]); }
+      } catch (_) {}
+    };
     es.onerror = () => { setLogConnected(false); es.close(); };
     return () => es.close();
-  }, [taskId]);
+  }, [taskId, logPaused]);
+
+  // Resume: flush buffered logs
+  const handleResumeLogs = () => {
+    if (pausedLogsRef.current.length) {
+      setLogs(p => [...p, ...pausedLogsRef.current]);
+      pausedLogsRef.current = [];
+    }
+    setLogPaused(false);
+  };
+
+  // Filtered logs
+  const filteredLogs = useMemo(() => {
+    let result = logs;
+    if (logLevel !== 'all') {
+      result = result.filter(l => l.line.includes(`[${logLevel.toUpperCase()}]`));
+    }
+    if (logSearch) {
+      const q = logSearch.toLowerCase();
+      result = result.filter(l => l.line.toLowerCase().includes(q));
+    }
+    return result;
+  }, [logs, logSearch, logLevel]);
+
+  const exportLogs = () => {
+    const text = logs.map(l => `${l.ts}  ${l.line}`).join('\n');
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `logs-${taskId}.txt`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleRetryInline = async () => {
+    if (!taskId) return;
+    setRelaunching(true);
+    setLogs([]);
+    await apiFetch(`${BASE}/api/tasks/${taskId}/run`, { method: 'POST' }).catch(() => {});
+    setTimeout(() => setRelaunching(false), 3500);
+  };
+
+  const handleClone = () => {
+    if (!task) return;
+    navigate('/tasks/new', { state: { prefill: task } });
+  };
 
   // Auto-scroll
   useEffect(() => {
@@ -229,6 +298,8 @@ export const TaskDetailPage = () => {
             }
             items={[
               { icon: copiedLogs ? Check : Copy, label: 'Copier les logs', onClick: copyLogs },
+              { icon: Download, label: 'Exporter les logs', onClick: exportLogs },
+              { icon: RotateCcw, label: 'Cloner la tâche', onClick: handleClone },
               { icon: relaunching ? RefreshCw : Play, label: 'Relancer la tâche', onClick: handleRelaunch },
               { icon: Trash2, label: 'Archiver / Supprimer', danger: true, onClick: () => console.log('delete') },
             ]}
@@ -251,36 +322,130 @@ export const TaskDetailPage = () => {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
 
           {/* Terminal */}
-          <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: '300px', maxHeight: '380px' }}>
-            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', gap: '12px', alignItems: 'center', background: 'rgba(0,0,0,0.2)' }}>
+          <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: '300px', maxHeight: '420px' }}>
+            {/* Terminal header with controls */}
+            <div style={{ padding: '10px 18px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', gap: '10px', alignItems: 'center', background: 'rgba(0,0,0,0.2)', flexWrap: 'wrap' }}>
               <Terminal size={16} color="var(--text-secondary)" />
               <span style={{ fontWeight: 600 }}>Live Terminal</span>
-              <span style={{ marginLeft: 'auto', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 600, color: logConnected ? '#10b981' : '#ef4444' }}>
-                {logConnected ? <Wifi size={11} /> : <WifiOff size={11} />}
-                {logConnected ? 'STREAMING' : 'OFFLINE'}
+
+              {/* Search */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '4px 10px', border: '1px solid var(--border-subtle)', marginLeft: '8px' }}>
+                <Search size={12} color="var(--text-secondary)" />
+                <input
+                  type="text" value={logSearch} onChange={e => setLogSearch(e.target.value)}
+                  placeholder="Filtrer les logs…"
+                  style={{ background: 'none', border: 'none', outline: 'none', color: 'var(--text-primary)', fontSize: '11px', width: '120px', fontFamily: 'var(--mono)' }}
+                />
+              </div>
+
+              {/* Level filter */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Filter size={11} color="var(--text-secondary)" />
+                <select
+                  value={logLevel} onChange={e => setLogLevel(e.target.value)}
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '11px', padding: '3px 6px', cursor: 'pointer' }}
+                >
+                  <option value="all">Tous</option>
+                  <option value="ERROR">Erreurs</option>
+                  <option value="LLM">LLM</option>
+                  <option value="EXEC">Exec</option>
+                  <option value="NET">Net</option>
+                  <option value="BOOT">Boot</option>
+                </select>
+              </div>
+
+              {/* Pause / Resume */}
+              <button
+                onClick={() => logPaused ? handleResumeLogs() : setLogPaused(true)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px',
+                  background: logPaused ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${logPaused ? 'rgba(245,158,11,0.3)' : 'var(--border-subtle)'}`,
+                  borderRadius: '6px', cursor: 'pointer', color: logPaused ? '#f59e0b' : 'var(--text-secondary)',
+                  fontSize: '11px', fontWeight: 600,
+                }}
+              >
+                {logPaused ? <><Play size={11} /> Resume ({pausedLogsRef.current.length})</> : <><Pause size={11} /> Pause</>}
+              </button>
+
+              {/* Log count + status */}
+              <span style={{ marginLeft: 'auto', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--mono)' }}>{filteredLogs.length}/{logs.length}</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 600, color: logConnected ? '#10b981' : '#ef4444' }}>
+                  {logConnected ? <Wifi size={11} /> : <WifiOff size={11} />}
+                  {logConnected ? 'LIVE' : 'OFFLINE'}
+                </span>
               </span>
             </div>
+
+            {/* Log output */}
             <div ref={terminalRef} style={{
               flex: 1, background: '#050510', padding: '16px',
               fontFamily: 'var(--mono)', fontSize: '12px', lineHeight: 1.7,
               overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1px',
             }}>
-              {logs.length === 0 && (
+              {filteredLogs.length === 0 && logs.length === 0 && (
                 <div style={{ color: '#3b82f6', opacity: 0.6 }}>
                   {logConnected ? 'Connexion au flux…' : '— Backend hors ligne — démarrez server.mjs —'}
                 </div>
               )}
-              {logs.map((entry, i) => (
+              {filteredLogs.length === 0 && logs.length > 0 && (
+                <div style={{ color: '#f59e0b', opacity: 0.6 }}>Aucun log ne correspond au filtre</div>
+              )}
+              {filteredLogs.map((entry, i) => (
                 <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                   <span style={{ color: '#2d2d3a', flexShrink: 0, fontSize: '10px', marginTop: '2px', minWidth: '65px' }}>
                     {new Date(entry.ts).toLocaleTimeString()}
                   </span>
-                  <span style={{ color: lineColor(entry.line) }}>{entry.line}</span>
+                  <span style={{ color: lineColor(entry.line) }}>{logSearch ? highlightMatch(entry.line, logSearch) : entry.line}</span>
                 </div>
               ))}
-              {logConnected && <span style={{ color: '#3b82f6', marginTop: '4px' }}>▋</span>}
+              {logConnected && !logPaused && <span style={{ color: '#3b82f6', marginTop: '4px' }}>▋</span>}
+              {logPaused && <span style={{ color: '#f59e0b', marginTop: '4px' }}>⏸ Paused — {pausedLogsRef.current.length} buffered</span>}
             </div>
           </div>
+
+          {/* ── Retry inline banner (shown when failed) ────────────── */}
+          {task.status === 'failed' && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '16px', padding: '16px 20px',
+              background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
+              borderRadius: '14px',
+            }}>
+              <AlertTriangle size={20} color="#ef4444" />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, color: '#ef4444', fontSize: '14px' }}>Tâche en échec</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                  La tâche a échoué. Vous pouvez la relancer ou la cloner avec des modifications.
+                </div>
+              </div>
+              <button
+                onClick={handleRetryInline}
+                disabled={relaunching}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px',
+                  background: relaunching ? 'rgba(245,158,11,0.15)' : 'rgba(59,130,246,0.15)',
+                  border: `1px solid ${relaunching ? 'rgba(245,158,11,0.3)' : 'rgba(59,130,246,0.3)'}`,
+                  borderRadius: 'var(--radius-full)', cursor: relaunching ? 'not-allowed' : 'pointer',
+                  color: relaunching ? '#f59e0b' : '#3b82f6', fontWeight: 700, fontSize: '13px',
+                }}
+              >
+                <RefreshCw size={14} style={relaunching ? { animation: 'spin 1s linear infinite' } : {}} />
+                {relaunching ? 'Relancement…' : 'Réessayer'}
+              </button>
+              <button
+                onClick={handleClone}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px',
+                  background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)',
+                  borderRadius: 'var(--radius-full)', cursor: 'pointer',
+                  color: 'var(--brand-accent)', fontWeight: 700, fontSize: '13px',
+                }}
+              >
+                <Copy size={14} /> Cloner & Modifier
+              </button>
+            </div>
+          )}
 
           {/* Executions */}
           {task.executions && task.executions.length > 0 && (

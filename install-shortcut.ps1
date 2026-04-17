@@ -59,16 +59,17 @@ Write-Host "OK - Icone creee : $icoPath"
 
 # -- 2. Cree le raccourci sur le Bureau --------------------------------------
 
-$batPath = Join-Path $ProjectDir "start-launcher.bat"
+$batPath = Join-Path $ProjectDir "start-launcher.vbs"
 $lnkPath = Join-Path ([Environment]::GetFolderPath("Desktop")) "ClawBoard.lnk"
 
 $wsh = New-Object -ComObject WScript.Shell
 $lnk = $wsh.CreateShortcut($lnkPath)
-$lnk.TargetPath       = $batPath
+$lnk.TargetPath       = "wscript.exe"
+$lnk.Arguments         = "`"$batPath`""
 $lnk.WorkingDirectory = $ProjectDir
 $lnk.IconLocation     = "$icoPath,0"
-$lnk.Description      = "Demarrer ClawBoard"
-$lnk.WindowStyle      = 1
+$lnk.Description      = "Demarrer ClawBoard (sans fenetre console)"
+$lnk.WindowStyle      = 7
 $lnk.Save()
 
 Write-Host "OK - Raccourci cree : $lnkPath"
