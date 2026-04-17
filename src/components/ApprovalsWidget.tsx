@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ShieldCheck, Clock, Bot, RefreshCw, CheckCheck, XCircle, Info, Wifi, WifiOff } from 'lucide-react';
 import { apiFetch } from '../lib/apiFetch';
+import { sendNotification, requestNotificationPermission } from '../lib/notify';
 import { TaskChatDrawer, ChatTriggerBtn, useTaskChat } from './TaskChatDrawer';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const BASE = 'http://localhost:4000';
 
@@ -147,6 +149,7 @@ export const ApprovalsWidget = () => {
         const req: ApprovalRequest = JSON.parse(e.data);
         setRequests(prev => {
           if (prev.some(r => r.id === req.id)) return prev;
+          sendNotification("Action requise", { body: req.taskName });
           return [req, ...prev];
         });
       } catch { /* malformed event */ }
@@ -195,6 +198,7 @@ export const ApprovalsWidget = () => {
 
   // Poll OpenShell séparé — se relance à chaque changement de sandboxName
   useEffect(() => {
+    requestNotificationPermission();
     if (osRef.current) clearInterval(osRef.current);
     pollOpenShell(sandboxName); // Poll immédiat dès que le nom change
     osRef.current = setInterval(() => pollOpenShell(sandboxName), 20000);
@@ -299,6 +303,7 @@ export const ApprovalsWidget = () => {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <AnimatePresence>
           {safeRequests.map(req => {
             const riskColor = RISK_COLOR[req.riskLevel];
             const exp = req.expiresAt ? timeLeft(req.expiresAt) : null;
@@ -306,15 +311,21 @@ export const ApprovalsWidget = () => {
             const isOpen = expanded === req.id;
 
             return (
-              <div key={req.id} style={{
-                background: 'var(--bg-glass)',
-                border: `1px solid var(--border-subtle)`,
-                borderLeft: `3px solid ${riskColor}`,
-                borderRadius: 10,
-                overflow: 'hidden',
-                opacity: isExpired ? 0.5 : 1,
-                transition: 'opacity 0.2s',
-              }}>
+              <motion.div
+                key={req.id}
+                layout
+                initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                animate={{ opacity: isExpired ? 0.5 : 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+                transition={{ duration: 0.3 }}
+                style={{
+                  background: 'var(--bg-glass)',
+                  border: `1px solid var(--border-subtle)`,
+                  borderLeft: `3px solid ${riskColor}`,
+                  borderRadius: 10,
+                  overflow: 'hidden',
+                }}
+              >
                 {/* Main row */}
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 14px' }}>
                   {/* Risk badge */}
@@ -443,9 +454,10 @@ export const ApprovalsWidget = () => {
                     </pre>
                   </div>
                 )}
-              </div>
+              </motion.div>
             );
           })}
+          </AnimatePresence>
         </div>
       )}
 

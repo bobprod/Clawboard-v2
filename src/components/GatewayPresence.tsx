@@ -149,7 +149,7 @@ export const GatewayPresence = () => {
                 {/* Time */}
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>{timeAgo(e.ts)}</div>
                 {/* Online dot */}
-                <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', flexShrink: 0, boxShadow: '0 0 6px #10b981' }} />
+                <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', flexShrink: 0, animation: 'pulseHeart 2s infinite' }} />
               </div>
             );
           })}
@@ -161,7 +161,14 @@ export const GatewayPresence = () => {
         </div>
       )}
 
-      <style>{`@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }`}</style>
+      <style>{`
+        @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+        @keyframes pulseHeart {
+          0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+          70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+      `}</style>
     </div>
   );
 };

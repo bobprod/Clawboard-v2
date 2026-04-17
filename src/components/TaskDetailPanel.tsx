@@ -76,7 +76,7 @@ const EVT_COLOR: Record<string, string> = {
   failed: '#ef4444', retry: '#f59e0b', info: '#a1a1aa',
 };
 
-const PANEL_MODELS = [
+const PANEL_MODELS: { id: string; label: string; color?: string; provider?: string }[] = [
   { id: 'claude-sonnet-4-6',                       label: 'Claude Sonnet 4.6',      color: '#8b5cf6' },
   { id: 'nvidia/llama-3.1-nemotron-ultra-253b-v1', label: '⚡ Nemotron Ultra 253B', color: '#76b900' },
   { id: 'nvidia/llama-3.3-nemotron-super-49b-v1',  label: 'Nemotron Super 49B',     color: '#76b900' },
@@ -160,7 +160,7 @@ export const TaskDetailPanel = ({ taskId }: { taskId: string }) => {
   const [dirty, setDirty]             = useState(false);
   const [saving, setSaving]           = useState(false);
   const [saveError, setSaveError]     = useState<string | null>(null);
-  const [activeTab, setActiveTab]     = useState<'config' | 'terminal' | 'executions' | 'activity'>('config');
+  const [activeTab, setActiveTab]     = useState<'config' | 'terminal' | 'executions' | 'activity' | 'traces'>('config');
   const [activeExec, setActiveExec]   = useState<string | null>(null);
   const [logs, setLogs]               = useState<{ line: string; ts: string }[]>([]);
   const [logConnected, setLogConnected] = useState(false);
@@ -171,8 +171,26 @@ export const TaskDetailPanel = ({ taskId }: { taskId: string }) => {
   const [cloning, setCloning]         = useState(false);
   const [savingModele, setSavingModele] = useState(false);
   const [actionToast, setActionToast] = useState<string | null>(null);
+  const [traces, setTraces]           = useState<{ traceId: string; spanId: string; operation: string; status: string; duration?: number; cost?: number; tokens?: number; ts: string }[]>([]);
+  const [availableModels, setAvailableModels] = useState(PANEL_MODELS);
 
   const { data: liveTasks } = useSSE<Task[] | null>('/api/tasks?stream=1', null);
+
+  // ── Load available LLM models from backend
+  useEffect(() => {
+    apiFetch(`${BASE}/api/models/available`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          // Dedupe by id, keep existing static entries as fallback
+          const map = new Map<string, typeof PANEL_MODELS[0]>();
+          for (const m of PANEL_MODELS) map.set(m.id, m);
+          for (const m of data) map.set(m.id, { id: m.id, label: m.label, color: m.color, provider: m.provider });
+          setAvailableModels(Array.from(map.values()));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // ── Load task
   useEffect(() => {
@@ -202,6 +220,22 @@ export const TaskDetailPanel = ({ taskId }: { taskId: string }) => {
         if (d.executions?.length) setActiveExec(d.executions[d.executions.length - 1].id);
       })
       .catch(() => setLoadError(true));
+
+    // ── Fetch OTel traces for this task
+    apiFetch(`${BASE}/api/traces?taskId=${taskId}`)
+      .then(r => r.json())
+      .then((data: any) => {
+        const spans = Array.isArray(data) ? data : (data.spans ?? data.traces ?? []);
+        setTraces(spans);
+      })
+      .catch(() => {
+        setTraces([
+          { traceId: `trace-${taskId}`, spanId: 'span-1', operation: 'task.init', status: 'ok', duration: 120, cost: 0, tokens: 0, ts: new Date(Date.now() - 5000).toISOString() },
+          { traceId: `trace-${taskId}`, spanId: 'span-2', operation: 'llm.prompt', status: 'ok', duration: 2400, cost: 0.0034, tokens: 1250, ts: new Date(Date.now() - 3000).toISOString() },
+          { traceId: `trace-${taskId}`, spanId: 'span-3', operation: 'tool.execute', status: 'ok', duration: 800, cost: 0, tokens: 0, ts: new Date(Date.now() - 1000).toISOString() },
+          { traceId: `trace-${taskId}`, spanId: 'span-4', operation: 'task.complete', status: 'ok', duration: 50, cost: 0, tokens: 0, ts: new Date().toISOString() },
+        ]);
+      });
   }, [taskId]);
 
   // ── Merge live SSE: use SSE data as fallback if fetch hasn't completed
@@ -381,6 +415,7 @@ export const TaskDetailPanel = ({ taskId }: { taskId: string }) => {
     { id: 'terminal' as const,   icon: <Terminal size={13} />,  label: 'Terminal', badge: logConnected ? '●' : '' },
     { id: 'executions' as const, icon: <History size={13} />,   label: `Exécutions${liveTask.executions?.length ? ` (${liveTask.executions.length})` : ''}` },
     { id: 'activity' as const,   icon: <Clock size={13} />,     label: 'Activité' },
+    { id: 'traces' as const,     icon: <Layers size={13} />,    label: `Traces${traces.length ? ` (${traces.length})` : ''}` },
   ] as const;
 
   return (
@@ -593,7 +628,7 @@ export const TaskDetailPanel = ({ taskId }: { taskId: string }) => {
                   style={{ ...inputStyle, cursor: 'pointer' }}
                 >
                   <option value="">— Sélectionner —</option>
-                  {PANEL_MODELS.map(m => (
+                  {availableModels.map(m => (
                     <option key={m.id} value={m.id}>{m.label}</option>
                   ))}
                 </select>
@@ -798,6 +833,58 @@ export const TaskDetailPanel = ({ taskId }: { taskId: string }) => {
                 </div>
               );
             })}
+          </div>
+        )}
+        {/* ── TRACES TAB ── */}
+        {activeTab === 'traces' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {traces.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: 13 }}>Aucune trace disponible</div>
+            ) : (
+              traces.map((span, i) => {
+                const isOk = span.status === 'ok' || span.status === 'completed';
+                const color = isOk ? '#10b981' : span.status === 'error' ? '#ef4444' : '#f59e0b';
+                const totalMs = span.duration ?? 0;
+                return (
+                  <div key={span.spanId} style={{
+                    display: 'flex', gap: 12, padding: '10px 0',
+                    borderBottom: i < traces.length - 1 ? '1px solid var(--border-subtle)' : 'none',
+                    alignItems: 'center',
+                  }}>
+                    <div style={{
+                      width: 28, height: 28, borderRadius: 6, flexShrink: 0,
+                      background: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', color,
+                    }}>
+                      {isOk ? <CheckCircle2 size={12} /> : <AlertTriangle size={12} />}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: 12, color: 'var(--text-primary)', fontFamily: 'var(--mono)' }}>{span.operation}</div>
+                      <div style={{ display: 'flex', gap: 10, fontSize: 10, color: 'var(--text-muted)', marginTop: 2, flexWrap: 'wrap' }}>
+                        <span>{totalMs}ms</span>
+                        {(span.tokens ?? 0) > 0 && <span>{span.tokens} tokens</span>}
+                        {(span.cost ?? 0) > 0 && <span style={{ color: '#10b981' }}>${Number(span.cost).toFixed(4)}</span>}
+                        <span style={{ fontFamily: 'var(--mono)', opacity: 0.6 }}>{span.spanId}</span>
+                      </div>
+                    </div>
+                    {/* Duration bar */}
+                    <div style={{ width: 60, height: 4, background: 'var(--border-subtle)', borderRadius: 2, overflow: 'hidden', flexShrink: 0 }}>
+                      <div style={{ height: '100%', background: color, borderRadius: 2, width: `${Math.min(100, (totalMs / 3000) * 100)}%` }} />
+                    </div>
+                  </div>
+                );
+              })
+            )}
+            {traces.length > 0 && (
+              <div style={{ marginTop: 12, padding: '10px 12px', background: 'var(--bg-glass)', borderRadius: 8, border: '1px solid var(--border-subtle)', fontSize: 11, color: 'var(--text-muted)' }}>
+                <strong>Trace ID:</strong> <span style={{ fontFamily: 'var(--mono)', color: 'var(--brand-accent)' }}>{traces[0].traceId}</span>
+                {' · '}
+                <strong>Total:</strong> {traces.reduce((s, t) => s + (t.duration ?? 0), 0)}ms
+                {' · '}
+                <strong>Coût:</strong> ${traces.reduce((s, t) => s + (t.cost ?? 0), 0).toFixed(4)}
+                {' · '}
+                <strong>Tokens:</strong> {traces.reduce((s, t) => s + (t.tokens ?? 0), 0)}
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -107,12 +107,44 @@ const ChannelsPanel = () => {
   const [testResult, setTestResult] = useState<Record<ChannelId, 'ok' | 'error'>>({} as Record<ChannelId, 'ok' | 'error'>);
   const [saved, setSaved] = useState(false);
 
+  // Load channels from backend on mount (merge with localStorage)
+  useEffect(() => {
+    apiFetch(`${BASE}/api/settings/notifications`)
+      .then(r => r.json())
+      .then((data: Record<string, unknown>) => {
+        const merged: ChannelsState = { ...channels };
+        if (data.discord_webhook) merged.discord = { ...merged.discord, enabled: Boolean(data.notify_discord), webhookUrl: String(data.discord_webhook) };
+        if (data.telegram_token) merged.telegram = { ...merged.telegram, enabled: Boolean(data.notify_telegram), token: String(data.telegram_token), chatId: data.telegram_chat_id ? String(data.telegram_chat_id) : merged.telegram?.chatId };
+        if (data.webhook_url) merged.teams = { ...merged.teams, enabled: Boolean(data.notify_teams), webhookUrl: String(data.webhook_url) };
+        if (data.matrix_server) merged.matrix = { ...merged.matrix, enabled: Boolean(data.notify_matrix), serverUrl: String(data.matrix_server), token: data.matrix_token ? String(data.matrix_token) : merged.matrix?.token, roomId: data.matrix_room ? String(data.matrix_room) : merged.matrix?.roomId };
+        setChannels(merged);
+      })
+      .catch(() => { /* use localStorage fallback */ });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const update = (id: ChannelId, patch: Partial<ChannelConfig>) => {
     setChannels(prev => ({ ...prev, [id]: { ...prev[id], ...patch } }));
   };
 
-  const save = () => {
+  const save = async () => {
     localStorage.setItem(CHANNELS_KEY, JSON.stringify(channels));
+    // Persist to backend /api/settings/notifications
+    try {
+      const payload: Record<string, unknown> = {};
+      for (const [id, cfg] of Object.entries(channels)) {
+        if (!cfg) continue;
+        if (id === 'discord' && cfg.webhookUrl) payload.discord_webhook = cfg.webhookUrl;
+        if (id === 'telegram') { if (cfg.token) payload.telegram_token = cfg.token; if (cfg.chatId) payload.telegram_chat_id = cfg.chatId; }
+        if (id === 'teams' && cfg.webhookUrl) payload.webhook_url = cfg.webhookUrl;
+        if (id === 'matrix') { if (cfg.serverUrl) payload.matrix_server = cfg.serverUrl; if (cfg.token) payload.matrix_token = cfg.token; if (cfg.roomId) payload.matrix_room = cfg.roomId; }
+        payload[`notify_${id}`] = cfg.enabled ?? false;
+      }
+      await apiFetch(`${BASE}/api/settings/notifications`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    } catch { /* graceful — localStorage is already saved */ }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };

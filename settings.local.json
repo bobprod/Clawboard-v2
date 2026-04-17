@@ -92,5 +92,45 @@
       "Bash(curl -s \"http://localhost:5173/src/App.tsx\")",
       "Bash(curl -s \"http://localhost:5173/src/main.tsx\")"
     ]
+  },
+  "ollamaModelsPath": "E:\\.ollama\\models",
+  "toolsConfig": {
+    "profile": "full",
+    "allow": [],
+    "deny": [],
+    "security": {
+      "exec": {
+        "allowlist": true,
+        "timeout": 30,
+        "maxBuffer": 256
+      },
+      "fs": {
+        "readOnly": false,
+        "blockedExtensions": [
+          ".exe",
+          ".bat",
+          ".cmd",
+          ".ps1",
+          ".sh",
+          ".dll",
+          ".so",
+          ".msi"
+        ]
+      },
+      "web": {
+        "ssrfProtection": true,
+        "blockedHosts": [
+          "localhost",
+          "127.0.0.1",
+          "0.0.0.0",
+          "::1",
+          "169.254.169.254"
+        ]
+      },
+      "messaging": {
+        "requireRecipient": true
+      }
+    },
+    "byProvider": {}
   }
 }

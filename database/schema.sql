@@ -259,3 +259,19 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 
 CREATE INDEX IF NOT EXISTS audit_logs_ts_idx          ON audit_logs(ts DESC);
 CREATE INDEX IF NOT EXISTS audit_logs_entity_idx      ON audit_logs(entity_type, entity_id);
+
+-- ─── connectors — Connecteurs externes ───────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS connectors (
+  id            BIGSERIAL   PRIMARY KEY,
+  connector_id  TEXT        NOT NULL UNIQUE,
+  enabled       BOOLEAN     NOT NULL DEFAULT TRUE,
+  status        TEXT        NOT NULL DEFAULT 'disconnected',
+  config        JSONB       NOT NULL DEFAULT '{}',
+  last_sync     TIMESTAMPTZ,
+  error         TEXT,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS connectors_cid_idx ON connectors(connector_id);
