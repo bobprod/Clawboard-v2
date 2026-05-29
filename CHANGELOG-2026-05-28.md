@@ -356,6 +356,102 @@ npm run build     →  ✅ succès (warning chunk size non-bloquant)
 
 ---
 
+---
+
+## ITÉRATION #5 — PWA (Progressive Web App) (29 Mai 2026)
+
+### Objectif
+Transformer ClawBoard en PWA installable sur desktop (Windows/Mac) et mobile (Android/iOS) avec service worker, cache offline, et prompt d'installation natif.
+
+### Packages installés
+```
+vite-plugin-pwa        ^0.21.x   (plugin Vite + Workbox)
+workbox-window         ^7.x      (client SW registration)
+@vite-pwa/assets-generator ^1.0.2 (génération icônes depuis SVG)
+```
+
+### Fichiers créés/modifiés
+
+| Fichier | Changement |
+|---------|-----------|
+| `vite.config.ts` | Plugin `VitePWA` : manifest, workbox, cache strategies |
+| `index.html` | Meta tags PWA complets (apple-mobile-web-app, theme-color, viewport-fit) |
+| `tsconfig.app.json` | `types` += `"vite-plugin-pwa/client"` |
+| `src/components/PWAUpdateToast.tsx` | **CRÉÉ** — toast mise à jour SW + prompt install A2HS |
+| `src/App.tsx` | Import + `<PWAUpdateToast />` dans `<Router>` |
+| `src/index.css` | `@keyframes slideUp` pour l'animation du toast |
+| `server.mjs` | Headers SW corrects + MIME webmanifest |
+| `public/pwa-64x64.png` | **GÉNÉRÉ** depuis favicon.svg |
+| `public/pwa-192x192.png` | **GÉNÉRÉ** depuis favicon.svg |
+| `public/pwa-512x512.png` | **GÉNÉRÉ** depuis favicon.svg |
+| `public/maskable-icon-512x512.png` | **GÉNÉRÉ** — icône adaptative Android |
+| `public/apple-touch-icon-180x180.png` | **GÉNÉRÉ** — icône iOS |
+| `public/favicon.ico` | **GÉNÉRÉ** depuis favicon.svg |
+
+### Détail `vite.config.ts` — VitePWA
+
+```ts
+VitePWA({
+  registerType: 'autoUpdate',
+  manifest: {
+    name: 'ClawBoard — AI Command Center',
+    short_name: 'ClawBoard',
+    theme_color: '#8b5cf6',
+    background_color: '#0f0f13',
+    display: 'standalone',
+    lang: 'fr',
+    icons: [64, 192, 512, maskable-512]
+  },
+  workbox: {
+    runtimeCaching: [
+      { urlPattern: /localhost:4000\/api\//, handler: 'NetworkFirst', ttl: 300s },
+      { urlPattern: /\.(png|jpg|svg|ico|woff2?)$/, handler: 'CacheFirst', ttl: 30d }
+    ],
+    navigateFallbackDenylist: [/\/api\//]  // exclut SSE des fallbacks
+  }
+})
+```
+
+### Détail `server.mjs` — headers critiques pour PWA
+
+| Fichier | Cache-Control | Header spécial |
+|---------|--------------|----------------|
+| `sw.js`, `workbox-*.js` | `no-cache, no-store, must-revalidate` | `Service-Worker-Allowed: /` |
+| `*.webmanifest` | `no-cache, no-store, must-revalidate` | MIME `application/manifest+json` |
+| Autres assets | `public, max-age=31536000, immutable` | — |
+| HTML | `no-cache` | — |
+
+> **Critique** : sans `no-cache` sur sw.js, les mises à jour PWA ne se propagent jamais.
+> Sans `Service-Worker-Allowed: /`, le SW ne peut pas intercepter les requêtes hors de son sous-dossier.
+
+### `PWAUpdateToast.tsx`
+
+- `useRegisterSW` (vite-plugin-pwa) → détecte nouveau SW disponible → toast "Mettre à jour"
+- `beforeinstallprompt` event → toast "Installer ClawBoard" avec bouton A2HS
+- Polling SW toutes les 60 minutes pour détecter les mises à jour en arrière-plan
+- Animations `slideUp`, thème cohérent avec `var(--bg-surface)`, `var(--brand-accent)`
+
+### Flux prod complet (avec launcher)
+
+```
+node launcher.mjs          → port 3999 (login + console)
+  └─ server.mjs             → port 4000 (sert dist/)
+       └─ sw.js installé    → app précachée (546 entrées, 3.4 MB)
+            └─ Chrome/Edge  → bouton ⊕ Install dans barre d'adresse
+            └─ Android      → banner "Ajouter à l'écran"
+            └─ iOS Safari   → Partager → Sur l'écran d'accueil
+```
+
+### Build final
+
+```
+npx tsc --noEmit  →  0 erreurs
+npm run build     →  ✅ — dist/sw.js + dist/workbox-bdb082da.js générés
+                      546 entrées précachées (3428.84 KiB)
+```
+
+---
+
 ## RÈGLES À RESPECTER (rappel pour agents futurs)
 
 1. `npx tsc --noEmit` doit toujours passer **0 erreurs** avant de livrer
