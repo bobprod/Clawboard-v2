@@ -3993,24 +3993,45 @@ const server = http.createServer(async (req, res) => {
 // ─── Startup ──────────────────────────────────────────────────────────────────
 
 async function startup() {
-  await checkConnection();
-  await runPhase2Migration();
-  await seedIfEmpty();
-  await loadApiKeys();
-  await loadQuotas();
+  // ── Base de données — mode dégradé si absente ────────────────────────────
+  // On teste d'abord si DATABASE_URL est présent AVANT de tenter quoi que ce soit
+  const hasDb = Boolean(process.env.DATABASE_URL);
+  let dbOk = false;
+
+  if (hasDb) {
+    try {
+      await checkConnection();
+      dbOk = true;
+    } catch (err) {
+      log.warn("DB configurée mais inaccessible — mode no-DB (mock data)", {
+        error: err.message,
+      });
+      log.warn("→ Vérifiez DATABASE_URL dans .env et que PostgreSQL tourne.");
+    }
+  } else {
+    log.warn("DB: DATABASE_URL absent — démarrage en mode no-DB (mock data).");
+    log.warn("→ Configurez DATABASE_URL dans .env pour activer la persistance.");
+  }
+
+  // Migrations / seed / clés uniquement si DB réellement connectée
+  if (dbOk) {
+    try { await runPhase2Migration(); } catch (e) { log.warn("Migration ignorée",      { error: e.message }); }
+    try { await seedIfEmpty();        } catch (e) { log.warn("Seed ignoré",            { error: e.message }); }
+    try { await loadApiKeys();        } catch (e) { log.warn("API keys non chargées",  { error: e.message }); }
+    try { await loadQuotas();         } catch (e) { log.warn("Quotas non chargés",     { error: e.message }); }
+  }
+
   connectRedis().catch((err) =>
-    log.warn("Redis connexion échouée (dégradé sans cache)", {
-      error: err.message,
-    }),
+    log.warn("Redis connexion échouée (dégradé sans cache)", { error: err.message }),
   );
 
   server.listen(PORT, () => {
     log.info(`ClawBoard Backend started on :${PORT}`);
-    log.info("DB: PostgreSQL (clawboard)");
+    log.info(dbOk ? "DB: PostgreSQL connecté ✓" : "DB: mode no-DB (mock) ⚠");
   });
 }
 
 startup().catch((err) => {
-  log.error("Startup failed", { error: err.message });
+  log.error("Startup failed (erreur critique)", { error: err.message });
   process.exit(1);
 });
