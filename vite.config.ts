@@ -1,9 +1,62 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['favicon.ico', 'favicon.svg', 'apple-touch-icon-180x180.png'],
+      manifest: {
+        name: 'ClawBoard — AI Command Center',
+        short_name: 'ClawBoard',
+        description: 'Centre de commandement NemoClaw — pilotez tous vos agents IA depuis un seul tableau de bord.',
+        theme_color: '#8b5cf6',
+        background_color: '#0f0f13',
+        display: 'standalone',
+        orientation: 'portrait-primary',
+        scope: '/',
+        start_url: '/',
+        lang: 'fr',
+        categories: ['productivity', 'developer tools'],
+        icons: [
+          { src: 'pwa-64x64.png',          sizes: '64x64',   type: 'image/png' },
+          { src: 'pwa-192x192.png',         sizes: '192x192', type: 'image/png' },
+          { src: 'pwa-512x512.png',         sizes: '512x512', type: 'image/png' },
+          { src: 'maskable-icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
+      },
+      workbox: {
+        // Cache strategy: network-first for API calls, cache-first for assets
+        runtimeCaching: [
+          {
+            urlPattern: /^https?:\/\/localhost:4000\/api\//,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'nemoclaw-api',
+              expiration: { maxEntries: 50, maxAgeSeconds: 300 },
+              networkTimeoutSeconds: 5,
+            },
+          },
+          {
+            urlPattern: /\.(?:png|jpg|jpeg|svg|gif|ico|webp|woff2?)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'static-assets',
+              expiration: { maxEntries: 100, maxAgeSeconds: 30 * 24 * 60 * 60 },
+            },
+          },
+        ],
+        // Don't cache SSE streams
+        navigateFallbackDenylist: [/\/api\//],
+      },
+      devOptions: {
+        enabled: false, // désactivé en dev (évite les conflits HMR)
+      },
+    }),
+  ],
 
   build: {
     chunkSizeWarningLimit: 600,
