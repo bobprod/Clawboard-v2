@@ -11,6 +11,7 @@ import {
   Routes,
   Route,
   Link,
+  Navigate,
   useLocation,
   useNavigate,
 } from "react-router-dom";
@@ -56,11 +57,6 @@ const CollaborationModule = lazy(() =>
     default: m.CollaborationModule,
   })),
 );
-const AgentsHierarchyModule = lazy(() =>
-  import("./components/AgentsHierarchyModule").then((m) => ({
-    default: m.AgentsHierarchyModule,
-  })),
-);
 const MemoryModule = lazy(() =>
   import("./components/MemoryModule").then((m) => ({
     default: m.MemoryModule,
@@ -71,22 +67,12 @@ const SettingsModule = lazy(() =>
     default: m.SettingsModule,
   })),
 );
-const SchedulerModule = lazy(() =>
-  import("./components/SchedulerModule").then((m) => ({
-    default: m.SchedulerModule,
-  })),
-);
 const ChatModule = lazy(() =>
   import("./components/ChatModule").then((m) => ({ default: m.ChatModule })),
 );
 const DevToolsPage = lazy(() =>
   import("./components/DevToolsPage").then((m) => ({
     default: m.DevToolsPage,
-  })),
-);
-const IntegrationsPage = lazy(() =>
-  import("./components/IntegrationsPage").then((m) => ({
-    default: m.IntegrationsPage,
   })),
 );
 const WorkspaceExplorer = lazy(() =>
@@ -99,9 +85,9 @@ const BrowserControl = lazy(() =>
     default: m.BrowserControl,
   })),
 );
-const CoworkModule = lazy(() =>
-  import("./components/CoworkModule").then((m) => ({
-    default: m.CoworkModule,
+const AgentsHub = lazy(() =>
+  import("./components/AgentsHub").then((m) => ({
+    default: m.AgentsHub,
   })),
 );
 import { AgentChat } from "./components/AgentChat";
@@ -117,12 +103,10 @@ import {
   User,
   LogOut,
   Palette,
-  CalendarClock,
   MessageSquare,
   MapIcon,
   Terminal,
   Menu,
-  Plug,
   HardDrive,
   Layers,
 } from "lucide-react";
@@ -432,14 +416,6 @@ const PageContent = () => {
             }
           />
           <Route
-            path="/scheduler"
-            element={
-              <EB label="Planificateur">
-                <SchedulerModule />
-              </EB>
-            }
-          />
-          <Route
             path="/security"
             element={
               <EB label="Sécurité">
@@ -459,7 +435,7 @@ const PageContent = () => {
             path="/agents"
             element={
               <EB label="Agents">
-                <AgentsHierarchyModule />
+                <AgentsHub />
               </EB>
             }
           />
@@ -479,13 +455,10 @@ const PageContent = () => {
               </EB>
             }
           />
+          {/* Skills & Outils are now centralized in Settings */}
           <Route
             path="/integrations"
-            element={
-              <EB label="Connecteurs & Skills">
-                <IntegrationsPage />
-              </EB>
-            }
+            element={<Navigate to="/settings?tab=skills" replace />}
           />
           <Route
             path="/workspace"
@@ -503,14 +476,13 @@ const PageContent = () => {
               </EB>
             }
           />
-          <Route
-            path="/cowork"
-            element={
-              <EB label="Cowork Agent">
-                <CoworkModule />
-              </EB>
-            }
-          />
+          {/* Cowork/ACP/Team/Store/Preview/Scheduler redirected into their hub */}
+          <Route path="/cowork"    element={<Navigate to="/agents?tab=cowork"    replace />} />
+          <Route path="/acp"       element={<Navigate to="/agents?tab=installer" replace />} />
+          <Route path="/team"      element={<Navigate to="/agents?tab=team"      replace />} />
+          <Route path="/store"     element={<Navigate to="/agents?tab=store"     replace />} />
+          <Route path="/preview"   element={<Navigate to="/devtools?tab=preview" replace />} />
+          <Route path="/scheduler" element={<Navigate to="/tasks?tab=scheduler"  replace />} />
           <Route
             path="/settings"
             element={
@@ -519,6 +491,9 @@ const PageContent = () => {
               </EB>
             }
           />
+          {/* MCP & Connecteurs are now centralized in Settings */}
+          <Route path="/mcp"        element={<Navigate to="/settings?tab=mcp" replace />} />
+          <Route path="/connectors" element={<Navigate to="/settings?tab=mcp" replace />} />
         </Routes>
       </Suspense>
     </div>
@@ -579,17 +554,22 @@ const Sidebar = ({
           <h2>ClawBoard</h2>
         </div>
         <ul className="nav-links">
+          {/* ── AI CORE ── */}
+          <li className="nav-section-label">AI Core</li>
           <NavLink to="/" icon={LayoutDashboard} tourId="nav-dashboard">
             Tableau de bord
           </NavLink>
           <NavLink to="/tasks" icon={TerminalSquare} tourId="nav-tasks">
             Tâches
           </NavLink>
-          <NavLink to="/scheduler" icon={CalendarClock} tourId="nav-scheduler">
-            Planificateur
+          <NavLink to="/agents" icon={Network} tourId="nav-agents">
+            Agents
           </NavLink>
-          <NavLink to="/security" icon={ShieldCheck} tourId="nav-security">
-            Sécurité & Scan
+
+          {/* ── TRAVAIL ── */}
+          <li className="nav-section-label">Travail</li>
+          <NavLink to="/memory" icon={BrainCircuit} tourId="nav-memory">
+            Mémoire (QMD)
           </NavLink>
           <NavLink
             to="/collaborations"
@@ -598,20 +578,14 @@ const Sidebar = ({
           >
             Collaborations
           </NavLink>
-          <NavLink to="/agents" icon={Network} tourId="nav-agents">
-            Agents Hierarchy
+          <NavLink to="/security" icon={ShieldCheck} tourId="nav-security">
+            Sécurité & Scan
           </NavLink>
-          <NavLink to="/memory" icon={BrainCircuit} tourId="nav-memory">
-            Mémoire (QMD)
-          </NavLink>
+
+          {/* ── OUTILS ── */}
+          <li className="nav-section-label">Outils</li>
           <NavLink to="/devtools" icon={Terminal}>
             Outils & Logs
-          </NavLink>
-          <NavLink to="/integrations" icon={Plug} tourId="nav-integrations">
-            Connecteurs & Skills
-          </NavLink>
-          <NavLink to="/cowork" icon={Layers} tourId="nav-cowork">
-            Cowork Agent
           </NavLink>
         </ul>
         <div className="sidebar-footer">
@@ -737,6 +711,16 @@ const AppShell = ({
     onLogout();
   };
 
+  useEffect(() => {
+    const onAuthError = () => {
+      localStorage.removeItem("clawboard-token");
+      localStorage.removeItem("clawboard-user");
+      onLogout();
+    };
+    window.addEventListener("auth:unauthorized", onAuthError);
+    return () => window.removeEventListener("auth:unauthorized", onAuthError);
+  }, [onLogout]);
+
   const handleRestartTour = () => {
     resetTour();
     setTourRun(true);
@@ -781,7 +765,7 @@ const AppShell = ({
                 color: "#10b981",
               },
               {
-                to: "/cowork",
+                to: "/agents?tab=cowork",
                 icon: Layers,
                 label: "Cowork",
                 color: "#f59e0b",

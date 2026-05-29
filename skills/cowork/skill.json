@@ -1,0 +1,19 @@
+{
+  "name": "cowork",
+  "version": "1.0.0",
+  "description": "Agent Cowork autonome — planification multi-etapes, acces fichiers, sous-agents, human-in-the-loop.",
+  "type": "builtin",
+  "tools": ["create_task", "list_tasks", "read_file", "write_file", "exec_command", "send_message"],
+  "prompt_template": "Tu es un agent Cowork autonome. Objectif: {{objective}}\n\nPlanifie en etapes, execute chaque action, et rends un rapport final.\nSi une action necessite une approbation, mets la en attente.",
+  "inputs": [
+    { "name": "objective", "type": "string", "required": true, "description": "L'objectif a atteindre" },
+    { "name": "mode", "type": "string", "required": false, "description": "Mode: autonomous, supervised, manual" }
+  ],
+  "outputs": [
+    { "name": "report", "type": "string", "description": "Rapport final de l'execution" },
+    { "name": "artifacts", "type": "array", "description": "Fichiers crees ou modifies" }
+  ],
+  "tags": ["cowork", "agent", "multi-step", "planning"],
+  "author": "clawboard",
+  "enabled": true
+}

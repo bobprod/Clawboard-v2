@@ -43,6 +43,12 @@ import { register as registerConnectorRoutes } from "./routes/connectors.mjs";
 import { register as registerWorkspaceRoutes } from "./routes/workspace.mjs";
 import { register as registerMemoryEngineRoutes } from "./routes/memory-engine.mjs";
 import { register as registerComputerUseRoutes } from "./routes/computer-use.mjs";
+import { register as registerMcpRoutes } from "./routes/mcp.mjs";
+import { register as registerAcpRoutes } from "./routes/acp.mjs";
+import { register as registerSkillRoutes } from "./routes/skills.mjs";
+import { register as registerFileRoutes } from "./routes/files.mjs";
+import { register as registerAgentStoreRoutes } from "./routes/agent-store.mjs";
+import { createMcpSseHandler } from "./src/lib/mcp/server.mjs";
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
 const log = createLogger("server");
@@ -77,6 +83,7 @@ const PUBLIC_PREFIXES = [
   "/api/quota",
   "/api/logs/",
   "/api/auth/login",
+  "/mcp/",
 ];
 
 function checkAuth(req) {
@@ -2505,6 +2512,47 @@ async function callAnthropic(messages, model, permissions) {
   };
 }
 
+async function callCloudflare(messages, model) {
+  const key =
+    (apiKeys.cloudflare && decryptKey(apiKeys.cloudflare)) ||
+    process.env.CLOUDFLARE_API_KEY;
+  const accountId =
+    (apiKeys.cloudflare_account && decryptKey(apiKeys.cloudflare_account)) ||
+    process.env.CLOUDFLARE_ACCOUNT_ID;
+  if (!key || !accountId) return null;
+
+  const cfModel = model.replace("cloudflare/", "");
+  const msgs = [
+    { role: "system", content: LIA_SYSTEM },
+    ...messages.map((m) => ({
+      role: m.role,
+      content: Array.isArray(m.content)
+        ? m.content.find((c) => c.type === "text")?.text || ""
+        : m.content,
+    })),
+  ];
+
+  const resp = await fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${cfModel}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ messages: msgs }),
+    },
+  );
+
+  if (!resp.ok) {
+    const e = await resp.json().catch(() => ({}));
+    throw new Error(e.errors?.[0]?.message || `Cloudflare AI ${resp.status}`);
+  }
+
+  const data = await resp.json();
+  return { message: data.result?.response || "", toolCalls: [] };
+}
+
 async function callOpenRouter(messages, model) {
   const key =
     (apiKeys.openrouter && decryptKey(apiKeys.openrouter)) ||
@@ -3560,6 +3608,15 @@ async function runAgenticLoop(messages, model, permissions) {
         }
       );
     }
+    if (model.startsWith("cloudflare/")) {
+      const r = await callCloudflare(slim, model);
+      return (
+        r || {
+          message: `❌ Clé API Cloudflare non configurée. Ajoutez-la dans **Paramètres → Clés API** (Account ID requis).`,
+          toolCalls: [],
+        }
+      );
+    }
     const anthropicResult = await callAnthropic(slim, model, permissions);
     if (anthropicResult) return anthropicResult;
     return await smartMock(messages, permissions);
@@ -3745,10 +3802,20 @@ registerSecurityRoutes(router, routeCtx);
 registerSettingsRoutes(router, routeCtx);
 registerNemoClawRoutes(router, routeCtx);
 registerToolRoutes(router, routeCtx);
-registerConnectorRoutes(router, routeCtx);
 registerWorkspaceRoutes(router, routeCtx);
 registerMemoryEngineRoutes(router, routeCtx);
 registerComputerUseRoutes(router, routeCtx);
+// NOTE: connectors.mjs is intentionally NOT registered — its /api/mcp/servers
+// routes conflicted with the unified mcp.mjs backend (router is first-match-wins).
+// mcp.mjs is now the single source of truth for MCP server management.
+registerMcpRoutes(router, routeCtx);
+registerAcpRoutes(router, routeCtx);
+registerSkillRoutes(router, routeCtx);
+registerFileRoutes(router);
+registerAgentStoreRoutes(router, routeCtx);
+
+// ── MCP SSE endpoint (separate from router — uses its own handler) ──────────
+const { handler: mcpSseHandler } = createMcpSseHandler({ pool });
 
 // ─── HTTP server ──────────────────────────────────────────────────────────────
 
@@ -3834,6 +3901,11 @@ const server = http.createServer(async (req, res) => {
       return cb(parsed);
     });
   };
+
+  // ── MCP SSE endpoint (special handling — not via Router) ─────────────────
+  if (path === "/mcp/sse" || path === "/mcp/messages") {
+    return mcpSseHandler(req, res);
+  }
 
   // ── Route dispatch via modular router ──────────────────────────────────────
   const matched = router.match(req.method, path);

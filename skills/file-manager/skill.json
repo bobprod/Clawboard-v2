@@ -1,0 +1,20 @@
+{
+  "name": "file-manager",
+  "version": "1.0.0",
+  "description": "Gestion de fichiers dans le workspace — lecture, ecriture, liste, recherche et organisation.",
+  "type": "builtin",
+  "tools": ["list_directory", "read_file", "write_file"],
+  "prompt_template": "Gere les fichiers du workspace. Action demandee: {{action}}\n\nChemin: {{path}}\n\nRespecte les regles de securite NemoClaw (chemins autorises uniquement).",
+  "inputs": [
+    { "name": "action", "type": "string", "required": true, "description": "Action: read, write, list, search" },
+    { "name": "path", "type": "string", "required": true, "description": "Chemin du fichier ou dossier" },
+    { "name": "content", "type": "string", "required": false, "description": "Contenu a ecrire (si action=write)" }
+  ],
+  "outputs": [
+    { "name": "result", "type": "string", "description": "Contenu ou liste des fichiers" },
+    { "name": "path", "type": "string", "description": "Chemin traite" }
+  ],
+  "tags": ["files", "filesystem", "workspace", "management"],
+  "author": "clawboard",
+  "enabled": true
+}

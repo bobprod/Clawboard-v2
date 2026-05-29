@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { apiFetch } from "../lib/apiFetch";
 
 const BASE = "http://localhost:4000";
@@ -31,6 +31,11 @@ export function useChatStream() {
   const [messages, setMessages] = useState<StreamMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const loadingRef = useRef(loading);
+  const messagesRef = useRef(messages);
+
+  useEffect(() => { loadingRef.current = loading; }, [loading]);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
 
   const clearMessages = useCallback(() => setMessages([]), []);
 
@@ -53,7 +58,7 @@ export function useChatStream() {
         preInstructions,
         history,
       } = opts;
-      if (!text.trim() || loading) return;
+      if (!text.trim() || loadingRef.current) return;
 
       const userMsg: StreamMessage = {
         id: uid(),
@@ -83,7 +88,7 @@ export function useChatStream() {
 
       const chatHistory =
         history ??
-        messages
+        messagesRef.current
           .filter((m) => m.role !== "tool")
           .map((m) => ({ role: m.role, content: m.content }));
 
@@ -214,7 +219,7 @@ export function useChatStream() {
       setLoading(false);
       abortRef.current = null;
     },
-    [loading, messages],
+    [], // stable — reads loading/messages via refs
   );
 
   const abort = useCallback(() => {

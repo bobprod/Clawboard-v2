@@ -31,9 +31,13 @@ export async function apiFetch(url: string, init: RequestInit = {}): Promise<Res
   headers.set('Authorization', `Bearer ${token}`);
   const res = await fetch(url, { ...init, headers });
   if (res.status === 401) {
-    // Token invalide — on vide le localStorage et on redirige vers login
     localStorage.removeItem('clawboard-token');
-    window.location.href = '/';
+    // Only redirect for non-SSE, non-streaming requests to avoid redirect loops
+    // Use React Router-capable navigation: dispatch a custom event so App.tsx
+    // can handle the redirect without a full page reload that erases state.
+    if (!url.includes('stream') && !url.includes('/api/quota')) {
+      window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+    }
   }
   return res;
 }

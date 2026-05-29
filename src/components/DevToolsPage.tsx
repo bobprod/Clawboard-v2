@@ -1,5 +1,6 @@
-import { useState, lazy, Suspense } from "react";
-import { Terminal, GitBranch, ScrollText } from "lucide-react";
+import { useState, lazy, Suspense, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Terminal, GitBranch, ScrollText, MonitorPlay } from "lucide-react";
 
 const TerminalModule = lazy(() =>
   import("./TerminalModule").then((m) => ({ default: m.TerminalModule })),
@@ -10,17 +11,31 @@ const GitLogModule = lazy(() =>
 const AuditLogsModule = lazy(() =>
   import("./AuditLogsModule").then((m) => ({ default: m.AuditLogsModule })),
 );
+const PreviewPanel = lazy(() => import("./PreviewPanel"));
 
-type Tab = "terminal" | "gitlog" | "audit";
+type Tab = "terminal" | "gitlog" | "audit" | "preview";
 
 const TABS: { id: Tab; label: string; icon: typeof Terminal }[] = [
-  { id: "terminal", label: "Terminal", icon: Terminal },
-  { id: "gitlog", label: "Git Log", icon: GitBranch },
-  { id: "audit", label: "Audit", icon: ScrollText },
+  { id: "terminal", label: "Terminal",   icon: Terminal     },
+  { id: "gitlog",   label: "Git Log",    icon: GitBranch    },
+  { id: "audit",    label: "Audit",      icon: ScrollText   },
+  { id: "preview",  label: "Preview",    icon: MonitorPlay  },
 ];
 
 export const DevToolsPage = () => {
-  const [activeTab, setActiveTab] = useState<Tab>("terminal");
+  const [searchParams] = useSearchParams();
+  const urlTab = searchParams.get("tab") as Tab | null;
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    if (urlTab && ["terminal","gitlog","audit","preview"].includes(urlTab))
+      return urlTab;
+    return "terminal";
+  });
+
+  // Sync if URL tab param changes (e.g. redirect from /preview)
+  useEffect(() => {
+    if (urlTab && ["terminal","gitlog","audit","preview"].includes(urlTab))
+      setActiveTab(urlTab);
+  }, [urlTab]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
@@ -82,8 +97,9 @@ export const DevToolsPage = () => {
             <TerminalModule />
           </div>
         )}
-        {activeTab === "gitlog" && <GitLogModule />}
-        {activeTab === "audit" && <AuditLogsModule />}
+        {activeTab === "gitlog"   && <GitLogModule />}
+        {activeTab === "audit"    && <AuditLogsModule />}
+        {activeTab === "preview"  && <PreviewPanel />}
       </Suspense>
     </div>
   );

@@ -29,13 +29,12 @@ import {
   LayoutTemplate,
   Repeat2,
 } from "lucide-react";
-import { marked } from "marked";
-import DOMPurify from "dompurify";
 import { useApiKeys } from "../hooks/useApiKeys";
 import { useSSE } from "../hooks/useSSE";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../lib/apiFetch";
 import { LiaPlanPreview, type LiaPlan } from "./LiaPlanPreview";
+import { renderMarkdown } from "./MarkdownRenderer";
 
 const BASE = "http://localhost:4000";
 
@@ -312,6 +311,43 @@ const MODELS = [
     provider: "Google",
     color: "#4285f4",
   },
+  // ── Cloudflare Workers AI ──────────────────────────────────────────────────
+  {
+    id: "cloudflare/@cf/meta/llama-3.1-8b-instruct",
+    label: "Llama 3.1 8B (Cloudflare)",
+    provider: "Cloudflare",
+    color: "#f38020",
+  },
+  {
+    id: "cloudflare/@cf/meta/llama-3.1-70b-instruct",
+    label: "Llama 3.1 70B (Cloudflare)",
+    provider: "Cloudflare",
+    color: "#f38020",
+  },
+  {
+    id: "cloudflare/@cf/meta/llama-3.2-3b-instruct",
+    label: "Llama 3.2 3B (Cloudflare)",
+    provider: "Cloudflare",
+    color: "#f38020",
+  },
+  {
+    id: "cloudflare/@cf/deepseek/deepseek-r1-distill-qwen-32b",
+    label: "DeepSeek R1 32B (Cloudflare)",
+    provider: "Cloudflare",
+    color: "#f38020",
+  },
+  {
+    id: "cloudflare/@cf/qwen/qwq-32b",
+    label: "QwQ 32B (Cloudflare)",
+    provider: "Cloudflare",
+    color: "#f38020",
+  },
+  {
+    id: "cloudflare/@cf/mistral/mistral-small-3.1-24b-instruct",
+    label: "Mistral Small 3.1 (Cloudflare)",
+    provider: "Cloudflare",
+    color: "#f38020",
+  },
   // ── Local ──────────────────────────────────────────────────────────────────
   {
     id: "ollama/qwen2.5",
@@ -523,104 +559,7 @@ const ToolCallCard = ({ tc }: { tc: ToolCall }) => {
   );
 };
 
-// ─── Markdown-lite renderer ────────────────────────────────────────────────────
-
-// Configure marked
-marked.setOptions({ breaks: true, gfm: true });
-
-const MARKDOWN_STYLES = `
-  .md-body { font-size: 0.9rem; line-height: 1.6; }
-  .md-body p { margin: 4px 0; }
-  .md-body ul, .md-body ol { margin: 6px 0; padding-left: 20px; }
-  .md-body li { margin: 2px 0; }
-  .md-body h1, .md-body h2, .md-body h3 { margin: 10px 0 4px; font-weight: 700; }
-  .md-body h1 { font-size: 1.1em; }
-  .md-body h2 { font-size: 1em; }
-  .md-body h3 { font-size: 0.95em; color: var(--brand-accent); }
-  .md-body code { background: rgba(139,92,246,0.15); padding: 1px 6px; border-radius: 4px; font-family: monospace; font-size: 0.85em; color: var(--brand-accent); }
-  .md-body pre { background: rgba(0,0,0,0.3); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 12px; margin: 8px 0; overflow-x: auto; }
-  .md-body pre code { background: none; padding: 0; color: #e2e8f0; font-size: 0.82em; }
-  .md-body blockquote { border-left: 3px solid var(--brand-accent); margin: 6px 0; padding: 2px 12px; color: var(--text-secondary); font-style: italic; }
-  .md-body table { border-collapse: collapse; margin: 8px 0; width: 100%; font-size: 0.85em; }
-  .md-body th { background: rgba(139,92,246,0.15); padding: 6px 10px; border: 1px solid var(--border-subtle); font-weight: 600; }
-  .md-body td { padding: 5px 10px; border: 1px solid var(--border-subtle); }
-  .md-body tr:nth-child(even) { background: rgba(255,255,255,0.03); }
-  .md-body a { color: var(--brand-accent); text-decoration: underline; }
-  .md-body hr { border: none; border-top: 1px solid var(--border-subtle); margin: 10px 0; }
-  .md-body strong { font-weight: 700; }
-  .md-body em { font-style: italic; opacity: 0.9; }
-`;
-
-const MarkdownRenderer = ({
-  content,
-  onTaskClick,
-}: {
-  content: string;
-  onTaskClick?: (id: string) => void;
-}) => {
-  // Replace tsk_XXX with clickable links before parsing
-  const withLinks = content.replace(/\b(tsk_\w+)\b/g, "[$1](/tasks/$1)");
-  const raw = marked.parse(withLinks) as string;
-  const html = DOMPurify.sanitize(raw, {
-    ALLOWED_TAGS: [
-      "p",
-      "br",
-      "strong",
-      "em",
-      "b",
-      "i",
-      "ul",
-      "ol",
-      "li",
-      "h1",
-      "h2",
-      "h3",
-      "h4",
-      "blockquote",
-      "code",
-      "pre",
-      "table",
-      "thead",
-      "tbody",
-      "tr",
-      "th",
-      "td",
-      "hr",
-      "a",
-      "span",
-    ],
-    ALLOWED_ATTR: ["href", "target", "class", "data-task"],
-  });
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!ref.current || !onTaskClick) return;
-    const links =
-      ref.current.querySelectorAll<HTMLAnchorElement>('a[href^="/tasks/"]');
-    links.forEach((a) => {
-      a.style.cssText =
-        "color:var(--brand-accent);font-weight:600;text-decoration:none;border-bottom:1px dashed currentColor;cursor:pointer;";
-      a.onclick = (e) => {
-        e.preventDefault();
-        const id = a.getAttribute("href")?.split("/tasks/")[1];
-        if (id) onTaskClick(id);
-      };
-    });
-  }, [html, onTaskClick]);
-  return (
-    <>
-      <style>{MARKDOWN_STYLES}</style>
-      <div
-        ref={ref}
-        className="md-body"
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
-    </>
-  );
-};
-
-const renderMarkdown = (text: string, onTaskClick?: (id: string) => void) => (
-  <MarkdownRenderer content={text} onTaskClick={onTaskClick} />
-);
+// MarkdownRenderer imported from ./MarkdownRenderer (react-markdown based)
 
 // ─── MessageBubble ────────────────────────────────────────────────────────────
 
