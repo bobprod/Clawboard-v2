@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { apiFetch } from "../lib/apiFetch";
+import { useAgentRoster } from "../hooks/useAgentRoster";
 import { SkillsPicker } from "./SkillsPicker";
 import {
   ArrowLeft,
@@ -791,6 +792,7 @@ export const TaskCreator = () => {
   const [llmModel, setLlmModel] = useState("");
   const [agent, setAgent] = useState("main");
   const [canal, setCanal] = useState("telegram");
+  const { agents: rosterAgents } = useAgentRoster();
   const [destinataire, setDestinataire] = useState("");
   const [timeoutMin, setTimeoutMin] = useState(30);
   const [objectives, setObjectives] = useState<string[]>([]);
@@ -1625,13 +1627,26 @@ export const TaskCreator = () => {
           data-tour="creator-agent-timeout"
           style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}
         >
-          <Field label="Agent" hint="Identifiant de l'agent d'exécution">
-            <input
+          <Field label="Agent" hint="Agent qui exécutera cette tâche">
+            <select
               value={agent}
               onChange={(e) => setAgent(e.target.value)}
-              style={inputStyle}
-              placeholder="main"
-            />
+              style={{ ...inputStyle, cursor: "pointer" }}
+            >
+              <option value="main">Lia / NemoClaw (auto)</option>
+              {rosterAgents.filter(a => a.source === "nemoclaw" && a.id !== "nemo-router").map(a => (
+                <option key={a.id} value={a.id}>{a.name} — {a.role}</option>
+              ))}
+              {rosterAgents.some(a => a.source === "acp") && (
+                <optgroup label="── Agents CLI ──">
+                  {rosterAgents.filter(a => a.source === "acp").map(a => (
+                    <option key={a.id} value={a.id} disabled={a.status === "stopped"}>
+                      {a.name}{a.status === "stopped" ? " (offline)" : ""}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
           </Field>
           <div>
             <Field

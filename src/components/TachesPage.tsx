@@ -6,6 +6,7 @@ const SchedulerModule = lazy(() =>
 );
 import { useSSE } from "../hooks/useSSE";
 import { apiFetch } from "../lib/apiFetch";
+import { useAgentRoster } from "../hooks/useAgentRoster";
 import { TaskDetailPanel } from "./TaskDetailPanel";
 import type { Task } from "../data/mockData";
 import {
@@ -562,10 +563,12 @@ function TabTaches({
 }) {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<string>("all");
+  const [agentFilter, setAgentFilter] = useState<string>("all");
   const [view, setView] = useState<"list" | "kanban">("list");
   const [search, setSearch] = useState("");
   const [replayingId, setReplayingId] = useState<string | null>(null);
   const { chatCtx, openChat, closeChat } = useTaskChat();
+  const { agents: rosterAgents } = useAgentRoster();
 
   const handleClone = (task: Task) => {
     const t = task as any;
@@ -618,8 +621,22 @@ function TabTaches({
   };
   const statuses = ["all", "running", "planned", "completed", "failed"];
 
+  // Unique agent ids that appear in the task list (for filter chips)
+  const agentIdsInTasks = Array.from(
+    new Set(
+      tasks
+        .map((t) => (t as any).agent || (t as any).agentId || "")
+        .filter(Boolean),
+    ),
+  );
+
   const filtered = tasks
     .filter((t) => filter === "all" || t.status === filter)
+    .filter(
+      (t) =>
+        agentFilter === "all" ||
+        ((t as any).agent || (t as any).agentId || "") === agentFilter,
+    )
     .filter(
       (t) =>
         !search.trim() ||
@@ -749,6 +766,77 @@ function TabTaches({
             <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
               {filtered.length} résultat{filtered.length !== 1 ? "s" : ""}
             </span>
+          )}
+
+          {/* Agent filter chips */}
+          {agentIdsInTasks.length > 0 && (
+            <div
+              style={{
+                display: "flex",
+                gap: "4px",
+                flexWrap: "wrap",
+                alignItems: "center",
+              }}
+            >
+              <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: 600, marginRight: 2 }}>
+                Agent :
+              </span>
+              <button
+                onClick={() => setAgentFilter("all")}
+                style={{
+                  padding: "4px 12px",
+                  borderRadius: "999px",
+                  border: `1px solid ${agentFilter === "all" ? "var(--brand-accent)" : "var(--border-subtle)"}`,
+                  background: agentFilter === "all" ? "rgba(139,92,246,0.18)" : "transparent",
+                  color: agentFilter === "all" ? "var(--brand-accent)" : "var(--text-secondary)",
+                  cursor: "pointer",
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  transition: "all 0.15s",
+                }}
+              >
+                Tous
+              </button>
+              {agentIdsInTasks.map((aid) => {
+                const rAgent = rosterAgents.find((a) => a.id === aid || a.name === aid);
+                const label = rAgent?.name ?? aid;
+                const color = rAgent?.color ?? "#8b5cf6";
+                const active = agentFilter === aid;
+                return (
+                  <button
+                    key={aid}
+                    onClick={() => setAgentFilter(active ? "all" : aid)}
+                    style={{
+                      padding: "4px 12px",
+                      borderRadius: "999px",
+                      border: `1px solid ${active ? color : "var(--border-subtle)"}`,
+                      background: active ? `${color}22` : "transparent",
+                      color: active ? color : "var(--text-secondary)",
+                      cursor: "pointer",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      transition: "all 0.15s",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 5,
+                    }}
+                  >
+                    {rAgent && (
+                      <span
+                        style={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: "50%",
+                          background: color,
+                          flexShrink: 0,
+                        }}
+                      />
+                    )}
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
           )}
 
           {/* View toggle */}

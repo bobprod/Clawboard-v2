@@ -284,6 +284,78 @@ npx tsc --noEmit  →  0 erreurs
 
 ---
 
+---
+
+## ITÉRATION #4 — Orchestration Chat ↔ Agents ↔ Tâches (29 Mai 2026)
+
+### Objectif
+Synchroniser et fluidifier le flux entre le module Tâches, les agents (Hiérarchie/Team) et le Chat central Lia pour que le chat puisse dispatcher et orchestrer entre agents, assigner des tâches, et recevoir leurs outputs.
+
+### Fichiers créés/modifiés
+
+| Fichier | Changement |
+|---------|-----------|
+| `src/hooks/useAgentRoster.ts` | **CRÉÉ** — hook partagé fusionnant NemoClaw + ACP agents |
+| `src/components/ChatModule.tsx` | Agent picker dropdown + ACP routing dans `sendMessage` |
+| `src/components/TaskCreator.tsx` | Agent select dropdown peuplé depuis `useAgentRoster` |
+| `src/components/TachesPage.tsx` | Agent filter chips dans TabTaches |
+| `src/components/AgentsOverview.tsx` | `taskCount` live depuis `/api/tasks` |
+
+### `src/hooks/useAgentRoster.ts` (CRÉÉ)
+
+Hook partagé par ChatModule, TaskCreator, TachesPage, AgentsOverview.
+
+```ts
+export interface RosterAgent {
+  id, name, role, source: "nemoclaw"|"acp", status, provider, color, command?, taskCount?
+}
+export function useAgentRoster() {
+  // Fetch /api/nemoclaw/agents + /api/acp/agents toutes les 30s
+  // Fallback: NEMO_STATIC (4) + ACP_STATIC (4)
+  return { agents, nemoAgents, acpAgents, activeAgents, loading, error, refresh }
+}
+```
+
+### `src/components/ChatModule.tsx` — modifications
+
+- Import `useAgentRoster` + `Cpu` (supprimé doublon)
+- State : `selectedAgentId`, `showAgentPicker`
+- `sendMessage` : si `selectedAgentId` → POST `/api/acp/agents/:id/message` (ACP routing), sinon `/api/chat/stream` avec `agentHint`
+- Header chat : bouton agent selector avec dropdown 3 sections (Lia / NemoClaw / CLI)
+
+### `src/components/TaskCreator.tsx` — modifications
+
+- Import `useAgentRoster`, const `rosterAgents`
+- Champ Agent : `<input>` → `<select>` avec options NemoClaw + `<optgroup>` CLI
+
+### `src/components/TachesPage.tsx` — modifications
+
+- Import `useAgentRoster`
+- State `agentFilter` (string, défaut "all")
+- `agentIdsInTasks` : Set des agent ids présents dans les tâches actuelles
+- `filtered` : applique `agentFilter` avant le filtre texte
+- UI : chips agent filter entre le filtre status et le view toggle
+
+### `src/components/AgentsOverview.tsx` — modifications
+
+- `NemoAgent` interface : ajout `taskCount?: number`
+- `fetchAll` : fetch `/api/tasks`, compte running+planned par agent id, patche `acp` et `nemo` avec vrais chiffres
+
+### Erreur corrigée
+
+| Erreur | Cause | Fix |
+|--------|-------|-----|
+| `TS2300` Duplicate identifier 'Cpu' | ChatModule.tsx avait Cpu importé deux fois | Supprimé le doublon ligne 31 |
+
+### Build final
+
+```
+npx tsc --noEmit  →  0 erreurs
+npm run build     →  ✅ succès (warning chunk size non-bloquant)
+```
+
+---
+
 ## RÈGLES À RESPECTER (rappel pour agents futurs)
 
 1. `npx tsc --noEmit` doit toujours passer **0 erreurs** avant de livrer
