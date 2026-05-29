@@ -3953,6 +3953,7 @@ const server = http.createServer(async (req, res) => {
         ".ttf": "font/ttf",
         ".webp": "image/webp",
         ".gz": "application/gzip",
+        ".webmanifest": "application/manifest+json",
       };
       let filePath = pathJoin(distDir, path === "/" ? "index.html" : path);
       if (!existsSync(filePath) || statSync(filePath).isDirectory()) {
@@ -3962,11 +3963,23 @@ const server = http.createServer(async (req, res) => {
         const ext = extname(filePath).toLowerCase();
         const mime = MIME[ext] || "application/octet-stream";
         const data = readFileSync(filePath);
-        res.writeHead(200, {
+        const fileName = filePath.split(/[\\/]/).pop() || "";
+
+        // Service Worker : no-cache obligatoire pour que les mises à jour PWA fonctionnent
+        const isSW = fileName === "sw.js" || fileName.startsWith("workbox-");
+        // HTML + SW + manifest : pas de cache long
+        const cacheControl = (ext === ".html" || isSW || ext === ".webmanifest")
+          ? "no-cache, no-store, must-revalidate"
+          : "public, max-age=31536000, immutable";
+
+        const headers = {
           "Content-Type": mime,
-          "Cache-Control":
-            ext === ".html" ? "no-cache" : "public, max-age=31536000",
-        });
+          "Cache-Control": cacheControl,
+        };
+        // Header requis pour que le SW contrôle tout le scope /
+        if (isSW) headers["Service-Worker-Allowed"] = "/";
+
+        res.writeHead(200, headers);
         res.end(data);
         return;
       }
