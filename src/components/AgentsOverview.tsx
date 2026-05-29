@@ -42,6 +42,7 @@ interface NemoAgent {
   parentId: string | null;
   cpu?: number;
   ram?: number;
+  taskCount?: number;
 }
 
 interface AcpAgent {
@@ -398,6 +399,32 @@ export const AgentsOverview = () => {
       const r = await apiFetch(`${BASE}/api/acp/agents`);
       if (r.ok) { acp = await r.json(); }
     } catch { /* use mock */ }
+
+    // Fetch live tasks to compute real taskCount per agent
+    try {
+      const r = await apiFetch(`${BASE}/api/tasks`);
+      if (r.ok) {
+        const tasks: any[] = await r.json();
+        // Count running/planned tasks per agent id
+        const counts: Record<string, number> = {};
+        tasks
+          .filter((t) => t.status === "running" || t.status === "planned")
+          .forEach((t) => {
+            const aid = t.agent || t.agentId || "main";
+            counts[aid] = (counts[aid] ?? 0) + 1;
+          });
+        // Patch acp agents
+        acp = acp.map((a) => ({
+          ...a,
+          taskCount: counts[a.id] ?? counts[a.name] ?? counts[a.command] ?? a.taskCount ?? 0,
+        }));
+        // Patch nemo agents
+        nemo = nemo.map((a) => ({
+          ...a,
+          taskCount: counts[a.id] ?? a.taskCount ?? 0,
+        }));
+      }
+    } catch { /* keep existing taskCount */ }
 
     setNemoAgents(nemo);
     setAcpAgents(acp);

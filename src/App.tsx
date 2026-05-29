@@ -19,6 +19,7 @@ import { Dropdown } from "./components/Dropdown";
 import { TourGuide, resetTour } from "./components/TourGuide";
 import { LoginPage } from "./components/LoginPage";
 import { ToastProvider } from "./components/ToastProvider";
+import { PWAUpdateToast } from "./components/PWAUpdateToast";
 
 interface ClawUser {
   username: string;
@@ -930,6 +931,7 @@ const App = () => {
           />
         </GlobalChatProvider>
       </ToastProvider>
+      <PWAUpdateToast />
     </Router>
   );
 };

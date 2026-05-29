@@ -33,6 +33,7 @@ import { useApiKeys } from "../hooks/useApiKeys";
 import { useSSE } from "../hooks/useSSE";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../lib/apiFetch";
+import { useAgentRoster } from "../hooks/useAgentRoster";
 import { LiaPlanPreview, type LiaPlan } from "./LiaPlanPreview";
 import { renderMarkdown } from "./MarkdownRenderer";
 
@@ -1394,10 +1395,13 @@ export const ChatModule = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [keySynced, setKeySynced] = useState(false);
   const [taskNotif, setTaskNotif] = useState<string | null>(null);
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [showAgentPicker, setShowAgentPicker] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const navigate = useNavigate();
   const prevTaskCountRef = useRef<number | null>(null);
+  const { agents: rosterAgents } = useAgentRoster();
 
   // ── Live task sync via SSE ──────────────────────────────────────────────────
   const { data: liveTasks } = useSSE<
@@ -1619,6 +1623,40 @@ export const ChatModule = () => {
       }
     }
 
+    // ── ACP agent routing : si un agent CLI est sélectionné, on lui envoie directement
+    if (selectedAgentId) {
+      try {
+        const acpRes = await apiFetch(
+          `${BASE}/api/acp/agents/${selectedAgentId}/message`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: text, stream: true }),
+          }
+        ).catch(() => null);
+
+        const agentName = rosterAgents.find(a => a.id === selectedAgentId)?.name ?? selectedAgentId;
+        let reply = `⚡ **${agentName}** a reçu la tâche.`;
+
+        if (acpRes?.ok) {
+          try {
+            const data = await acpRes.json();
+            reply = data?.reply ?? data?.output ?? data?.message ?? reply;
+          } catch { /* stream ou JSON vide */ }
+        }
+
+        setMessages(prev => [
+          ...prev.filter(m => !m.isLoading),
+          { id: uid(), role: "assistant", content: reply, ts: new Date() },
+        ]);
+        setIsLoading(false);
+        setIsThinking(false);
+        return;
+      } catch {
+        // fallback vers Lia si l'agent ACP est inaccessible
+      }
+    }
+
     try {
       const res = await apiFetch(`${BASE}/api/chat/stream`, {
         method: "POST",
@@ -1628,6 +1666,7 @@ export const ChatModule = () => {
           model,
           permissions: effectivePerms,
           executionMode,
+          agentHint: selectedAgentId ?? undefined,
         }),
       });
 
@@ -1782,7 +1821,11 @@ export const ChatModule = () => {
             <Bot size={18} color="var(--brand-accent)" />
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: "1rem" }}>Lia</div>
+            <div style={{ fontWeight: 700, fontSize: "1rem" }}>
+              {selectedAgentId
+                ? (rosterAgents.find(a => a.id === selectedAgentId)?.name ?? "Agent")
+                : "Lia"}
+            </div>
             <div
               style={{
                 fontSize: "0.75rem",
@@ -1797,12 +1840,144 @@ export const ChatModule = () => {
                   width: 6,
                   height: 6,
                   borderRadius: "50%",
-                  background: "#10b981",
+                  background: selectedAgentId ? (rosterAgents.find(a => a.id === selectedAgentId)?.color ?? "#10b981") : "#10b981",
                   display: "inline-block",
                 }}
               />
-              Assistante ClawBoard — {activeModel.provider}
+              {selectedAgentId
+                ? `Agent ${rosterAgents.find(a => a.id === selectedAgentId)?.source === "acp" ? "CLI" : "NemoClaw"} — ${rosterAgents.find(a => a.id === selectedAgentId)?.role ?? ""}`
+                : `Assistante ClawBoard — ${activeModel.provider}`}
             </div>
+          </div>
+
+          {/* ── Agent Dispatcher ───────────────────────────────────────── */}
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => setShowAgentPicker(o => !o)}
+              title="Dispatcher vers un agent"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                background: selectedAgentId
+                  ? `${rosterAgents.find(a => a.id === selectedAgentId)?.color ?? "var(--brand-accent)"}22`
+                  : "rgba(255,255,255,0.06)",
+                border: `1px solid ${selectedAgentId
+                  ? (rosterAgents.find(a => a.id === selectedAgentId)?.color ?? "var(--brand-accent)") + "55"
+                  : "var(--border-subtle)"}`,
+                borderRadius: 20,
+                padding: "6px 12px",
+                cursor: "pointer",
+                color: selectedAgentId
+                  ? (rosterAgents.find(a => a.id === selectedAgentId)?.color ?? "var(--brand-accent)")
+                  : "var(--text-secondary)",
+                fontSize: "0.78rem",
+                fontWeight: 600,
+                transition: "all 0.2s",
+              }}
+            >
+              <Cpu size={13} />
+              {selectedAgentId
+                ? rosterAgents.find(a => a.id === selectedAgentId)?.name ?? "Agent"
+                : "Lia (auto)"}
+              <ChevronDown size={11} style={{ opacity: 0.6 }} />
+            </button>
+
+            {showAgentPicker && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "calc(100% + 6px)",
+                  right: 0,
+                  background: "var(--bg-surface)",
+                  border: "1px solid var(--border-subtle)",
+                  borderRadius: "var(--radius-md)",
+                  boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+                  zIndex: 50,
+                  minWidth: 220,
+                  overflow: "hidden",
+                }}
+              >
+                {/* Option Lia */}
+                <button
+                  onClick={() => { setSelectedAgentId(null); setShowAgentPicker(false); }}
+                  style={{
+                    width: "100%",
+                    textAlign: "left",
+                    padding: "10px 14px",
+                    background: !selectedAgentId ? "rgba(139,92,246,0.1)" : "transparent",
+                    border: "none",
+                    borderBottom: "1px solid var(--border-subtle)",
+                    cursor: "pointer",
+                    color: !selectedAgentId ? "var(--brand-accent)" : "var(--text-secondary)",
+                    fontSize: "0.82rem",
+                    fontWeight: 600,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#10b981", display: "inline-block" }} />
+                  Lia (NemoClaw — auto)
+                </button>
+
+                {/* Séparateur NemoClaw */}
+                <div style={{ padding: "4px 14px 2px", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", color: "var(--text-muted)", textTransform: "uppercase" }}>
+                  Agents NemoClaw
+                </div>
+                {rosterAgents.filter(a => a.source === "nemoclaw").map(agent => (
+                  <button
+                    key={agent.id}
+                    onClick={() => { setSelectedAgentId(agent.id); setShowAgentPicker(false); }}
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      padding: "8px 14px",
+                      background: selectedAgentId === agent.id ? `${agent.color}18` : "transparent",
+                      border: "none",
+                      cursor: "pointer",
+                      color: selectedAgentId === agent.id ? agent.color : "var(--text-secondary)",
+                      fontSize: "0.82rem",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: agent.status === "active" ? "#10b981" : "#6b7280", display: "inline-block", flexShrink: 0 }} />
+                    <span style={{ flex: 1 }}>{agent.name}</span>
+                    <span style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>{agent.role}</span>
+                  </button>
+                ))}
+
+                {/* Séparateur CLI */}
+                <div style={{ padding: "4px 14px 2px", fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", color: "var(--text-muted)", textTransform: "uppercase", borderTop: "1px solid var(--border-subtle)", marginTop: 2 }}>
+                  Agents CLI
+                </div>
+                {rosterAgents.filter(a => a.source === "acp").map(agent => (
+                  <button
+                    key={agent.id}
+                    onClick={() => { setSelectedAgentId(agent.id); setShowAgentPicker(false); }}
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      padding: "8px 14px",
+                      background: selectedAgentId === agent.id ? `${agent.color}18` : "transparent",
+                      border: "none",
+                      cursor: "pointer",
+                      color: selectedAgentId === agent.id ? agent.color : "var(--text-secondary)",
+                      fontSize: "0.82rem",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: agent.status === "active" || agent.status === "idle" ? agent.color : "#6b7280", display: "inline-block", flexShrink: 0 }} />
+                    <span style={{ flex: 1 }}>{agent.name}</span>
+                    <span style={{ fontSize: "0.68rem", color: "var(--text-muted)", fontFamily: "var(--mono)" }}>{agent.command}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <ModelSelector model={model} onChange={setModel} />
