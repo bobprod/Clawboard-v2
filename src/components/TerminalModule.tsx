@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Loader2,
 } from "lucide-react";
+import { Virtuoso } from "react-virtuoso";
 import { apiFetch } from "../lib/apiFetch";
 
 const BASE = "http://localhost:4000";
@@ -663,8 +664,6 @@ export const TerminalModule = () => {
         style={{
           flex: 1,
           background: "var(--bg-surface)",
-          padding: "14px 18px",
-          overflowY: "auto",
           fontFamily: 'var(--mono, "Fira Code", "Cascadia Code", monospace)',
           fontSize: "0.78rem",
           lineHeight: 1.75,
@@ -673,34 +672,39 @@ export const TerminalModule = () => {
           maxHeight: 480,
         }}
       >
-        {lines.map((line) => (
-          <div key={line.id} style={{ display: "flex", gap: 10 }}>
-            {showTs && (
+        <Virtuoso
+          data={lines}
+          followOutput="smooth"
+          style={{ height: "100%" }}
+          itemContent={(_, line) => (
+            <div style={{ display: "flex", gap: 10, padding: "0 18px" }}>
+              {showTs && (
+                <span
+                  style={{
+                    color: "#4b5563",
+                    flexShrink: 0,
+                    userSelect: "none",
+                    fontSize: "0.7rem",
+                    lineHeight: 1.75,
+                    marginTop: 1,
+                  }}
+                >
+                  {line.ts}
+                </span>
+              )}
               <span
                 style={{
-                  color: "#4b5563",
-                  flexShrink: 0,
-                  userSelect: "none",
-                  fontSize: "0.7rem",
-                  lineHeight: 1.75,
-                  marginTop: 1,
+                  color: LINE_COLOR[line.type],
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-all",
+                  opacity: line.type === "system" ? 0.6 : 1,
                 }}
               >
-                {line.ts}
+                {line.text}
               </span>
-            )}
-            <span
-              style={{
-                color: LINE_COLOR[line.type],
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-all",
-                opacity: line.type === "system" ? 0.6 : 1,
-              }}
-            >
-              {line.text}
-            </span>
-          </div>
-        ))}
+            </div>
+          )}
+        />
 
         {/* Running indicator */}
         {running && (

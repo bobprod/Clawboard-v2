@@ -1,5 +1,9 @@
-import { useState, useEffect } from "react";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect, lazy, Suspense } from "react";
+import { Link, useParams, useNavigate, useSearchParams } from "react-router-dom";
+
+const SchedulerModule = lazy(() =>
+  import("./SchedulerModule").then((m) => ({ default: m.SchedulerModule })),
+);
 import { useSSE } from "../hooks/useSSE";
 import { apiFetch } from "../lib/apiFetch";
 import { TaskDetailPanel } from "./TaskDetailPanel";
@@ -30,6 +34,7 @@ import {
   RotateCcw,
   Download,
   AlertTriangle,
+  CalendarClock,
 } from "lucide-react";
 import { Dropdown } from "./Dropdown";
 import { TasksTour, resetTasksTour } from "./TasksTour";
@@ -92,20 +97,18 @@ type TabId =
   | "modeles"
   | "recurrences"
   | "preinstructions"
-  | "archives";
+  | "archives"
+  | "planificateur";
 
 const BASE = "http://localhost:4000";
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
-  { id: "taches", label: "Tâches", icon: <Play size={15} /> },
-  { id: "modeles", label: "Modèles", icon: <FileText size={15} /> },
-  { id: "recurrences", label: "Récurrences", icon: <Repeat size={15} /> },
-  {
-    id: "preinstructions",
-    label: "Pré-instructions",
-    icon: <BookOpen size={15} />,
-  },
-  { id: "archives", label: "Archives", icon: <Archive size={15} /> },
+  { id: "taches",          label: "Tâches",           icon: <Play size={15} />         },
+  { id: "modeles",         label: "Modèles",           icon: <FileText size={15} />     },
+  { id: "recurrences",     label: "Récurrences",       icon: <Repeat size={15} />       },
+  { id: "preinstructions", label: "Pré-instructions",  icon: <BookOpen size={15} />     },
+  { id: "archives",        label: "Archives",          icon: <Archive size={15} />      },
+  { id: "planificateur",   label: "Planificateur",     icon: <CalendarClock size={15} />},
 ];
 
 const STATUS_COLOR: Record<string, string> = {
@@ -3006,7 +3009,19 @@ function TabArchives() {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export const TachesPage = () => {
-  const [activeTab, setActiveTab] = useState<TabId>("taches");
+  const [searchParams] = useSearchParams();
+  const urlTab = searchParams.get("tab") as TabId | null;
+  const validTabs: TabId[] = ["taches","modeles","recurrences","preinstructions","archives","planificateur"];
+  const [activeTab, setActiveTab] = useState<TabId>(() =>
+    urlTab && validTabs.includes(urlTab) ? urlTab : "taches"
+  );
+
+  // Sync tab if URL param changes (e.g. redirect from /scheduler)
+  useEffect(() => {
+    if (urlTab && validTabs.includes(urlTab)) setActiveTab(urlTab);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlTab]);
+
   const [tourForceRun, setTourForceRun] = useState(false);
   const [panelCollapsed, setPanelCollapsed] = useState(false);
   const { data: liveTasks } = useSSE<Task[] | null>(
@@ -3222,10 +3237,15 @@ export const TachesPage = () => {
           {activeTab === "taches" && (
             <TabTaches tasks={tasks} onSelect={handleSelect} />
           )}
-          {activeTab === "modeles" && <TabModeles />}
-          {activeTab === "recurrences" && <TabRecurrences />}
+          {activeTab === "modeles"         && <TabModeles />}
+          {activeTab === "recurrences"     && <TabRecurrences />}
           {activeTab === "preinstructions" && <TabPreInstructions />}
-          {activeTab === "archives" && <TabArchives />}
+          {activeTab === "archives"        && <TabArchives />}
+          {activeTab === "planificateur"   && (
+            <Suspense fallback={<div style={{ padding: "2rem", color: "var(--text-secondary)" }}>Chargement…</div>}>
+              <SchedulerModule />
+            </Suspense>
+          )}
         </div>
 
         <style>{`

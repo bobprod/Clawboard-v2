@@ -1,0 +1,19 @@
+{
+  "name": "web-search",
+  "version": "1.0.0",
+  "description": "Recherche web securisee via proxy NemoClaw. Extraction de contenu, resume et analyse de pages web.",
+  "type": "builtin",
+  "tools": ["web_search", "web_fetch"],
+  "prompt_template": "Recherche sur le web: {{query}}\n\nAnalyse les resultats et fournis un resume structure avec les sources.",
+  "inputs": [
+    { "name": "query", "type": "string", "required": true, "description": "Requete de recherche" },
+    { "name": "maxResults", "type": "number", "required": false, "description": "Nombre max de resultats (defaut: 5)" }
+  ],
+  "outputs": [
+    { "name": "results", "type": "array", "description": "Liste des resultats avec titre, URL, extrait" },
+    { "name": "summary", "type": "string", "description": "Resume des resultats" }
+  ],
+  "tags": ["web", "search", "research", "scraping"],
+  "author": "clawboard",
+  "enabled": true
+}

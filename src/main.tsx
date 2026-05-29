@@ -1,5 +1,7 @@
 import { Component } from 'react'
 import { createRoot } from 'react-dom/client'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { queryClient } from './lib/queryClient.ts'
 import './index.css'
 import App from './App.tsx'
 
@@ -10,18 +12,9 @@ class ErrorBoundary extends Component<{children: any}, {error: any}> {
   render() {
     if (this.state.error) {
       return (
-        <div style={{
-          position: 'fixed', inset: 0, background: '#0a0a0f', display: 'flex',
-          alignItems: 'center', justifyContent: 'center', padding: '40px',
-          fontFamily: 'monospace', color: '#ef4444', flexDirection: 'column', gap: '16px',
-          zIndex: 99999,
-        }}>
-          <div style={{ fontSize: '20px', fontWeight: 'bold' }}>Erreur de rendu React</div>
-          <pre style={{
-            background: '#1a0010', padding: '20px', borderRadius: '8px',
-            border: '1px solid #ef444444', maxWidth: '900px', overflowX: 'auto',
-            whiteSpace: 'pre-wrap', fontSize: '13px', color: '#fca5a5', lineHeight: 1.6,
-          }}>
+        <div className="error-boundary">
+          <div className="error-title">Erreur de rendu React</div>
+          <pre className="error-stack">
             {String(this.state.error?.message || this.state.error)}
             {'\n\n'}
             {String(this.state.error?.stack || '').split('\n').slice(0,15).join('\n')}
@@ -35,6 +28,8 @@ class ErrorBoundary extends Component<{children: any}, {error: any}> {
 
 createRoot(document.getElementById('root')!).render(
   <ErrorBoundary>
-    <App />
+    <QueryClientProvider client={queryClient}>
+      <App />
+    </QueryClientProvider>
   </ErrorBoundary>,
 )

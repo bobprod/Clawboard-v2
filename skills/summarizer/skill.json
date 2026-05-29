@@ -1,0 +1,21 @@
+{
+  "name": "summarizer",
+  "version": "1.0.0",
+  "description": "Resume intelligent de textes, documents, conversations et pages web avec extraction des points cles.",
+  "type": "builtin",
+  "tools": ["web_fetch", "read_file"],
+  "prompt_template": "Resume le contenu suivant de maniere concise et structuree.\n\nContenu: {{content}}\n\nFormat: resume en 3-5 paragraphes + points cles + mots-cles.",
+  "inputs": [
+    { "name": "content", "type": "string", "required": true, "description": "Contenu a resumer (texte ou URL)" },
+    { "name": "maxLength", "type": "number", "required": false, "description": "Longueur max du resume (mots)" },
+    { "name": "language", "type": "string", "required": false, "description": "Langue du resume (defaut: francais)" }
+  ],
+  "outputs": [
+    { "name": "summary", "type": "string", "description": "Resume genere" },
+    { "name": "keyPoints", "type": "array", "description": "Points cles extraits" },
+    { "name": "keywords", "type": "array", "description": "Mots-cles identifies" }
+  ],
+  "tags": ["summary", "text", "analysis", "extraction"],
+  "author": "clawboard",
+  "enabled": true
+}

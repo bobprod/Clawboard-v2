@@ -1,0 +1,32 @@
+-- ClawBoard — Additional MCP Connectors
+INSERT INTO mcp_servers (id, name, description, transport, command, args, url, env, headers, status, tools_snapshot, auto_sync_cli, enabled) VALUES
+('sequential-thinking', 'Sequential Thinking', 'Raisonnement structure pas-a-pas pour les LLM. Decomposition de problemes complexes, chain-of-thought dynamique et revision.', 'stdio', 'npx', '["-y", "@modelcontextprotocol/server-sequential-thinking"]', NULL, '{}', '{}', 'disconnected', '[]', false, true),
+('everything', 'MCP Everything (Test)', 'Serveur de reference MCP avec tous les types de contenu : tools, resources, prompts, sampling. Ideal pour tester vos integrations.', 'stdio', 'npx', '["-y", "@modelcontextprotocol/server-everything"]', NULL, '{}', '{}', 'disconnected', '[]', false, true),
+('sqlite', 'SQLite', 'Requetez et modifiez des bases SQLite locales. Schema introspection, INSERT/UPDATE, analyse de donnees.', 'stdio', 'npx', '["-y", "@modelcontextprotocol/server-sqlite"]', NULL, '{"SQLITE_DB_PATH":""}', '{}', 'disconnected', '[]', false, true),
+('time', 'Time', 'Obtenez l heure actuelle dans n importe quel fuseau horaire. Conversion entre formats de date et calculs de duree.', 'stdio', 'npx', '["-y", "@modelcontextprotocol/server-time"]', NULL, '{}', '{}', 'disconnected', '[]', false, true),
+('stripe', 'Stripe', 'Gerez paiements, customers, subscriptions et invoices via l API Stripe. Webhooks et refund inclus.', 'stdio', 'npx', '["-y", "@anthropic/mcp-stripe"]', NULL, '{"STRIPE_SECRET_KEY":""}', '{}', 'disconnected', '[]', false, true),
+('linear', 'Linear', 'Gerez issues, projects et cycles dans Linear. Creation, mise a jour et recherche de tickets.', 'stdio', 'npx', '["-y", "mcp-linear"]', NULL, '{"LINEAR_API_KEY":""}', '{}', 'disconnected', '[]', false, true),
+('jira', 'Jira', 'Creez et suivez des tickets Jira, gerez les sprints et les boards. Recherche avancee JQL.', 'stdio', 'npx', '["-y", "@anthropic/mcp-atlassian"]', NULL, '{"JIRA_BASE_URL":"","JIRA_API_TOKEN":"","JIRA_USER_EMAIL":""}', '{}', 'disconnected', '[]', false, true),
+('confluence', 'Confluence', 'Recherchez et creez des pages Confluence. Acces au wiki d entreprise et gestion de contenu.', 'stdio', 'npx', '["-y", "@anthropic/mcp-atlassian"]', NULL, '{"CONFLUENCE_BASE_URL":"","CONFLUENCE_API_TOKEN":"","CONFLUENCE_USER_EMAIL":""}', '{}', 'disconnected', '[]', false, true),
+('shopify', 'Shopify', 'Gerez produits, commandes, clients et inventory sur Shopify. Analytics et discount codes.', 'sse', NULL, '[]', 'https://shopify-mcp.example.com/sse', '{"SHOPIFY_SHOP_DOMAIN":"","SHOPIFY_ACCESS_TOKEN":""}', '{}', 'disconnected', '[]', false, true),
+('discord', 'Discord', 'Envoyez des messages, lisez les channels et gerez les serveurs Discord via le Bot API.', 'stdio', 'npx', '["-y", "mcp-discord"]', NULL, '{"DISCORD_BOT_TOKEN":""}', '{}', 'disconnected', '[]', false, true),
+('airtable', 'Airtable', 'Lisez et ecrivez dans vos bases Airtable. Recherche, filtres et creation d enregistrements.', 'stdio', 'npx', '["-y", "mcp-airtable"]', NULL, '{"AIRTABLE_API_KEY":"","AIRTABLE_BASE_ID":""}', '{}', 'disconnected', '[]', false, true),
+('exa', 'Exa (Neural Search)', 'Recherche semantique AI-powered : trouve des pages web par contenu, pas par keywords. Ideal pour le research avance.', 'stdio', 'npx', '["-y", "mcp-exa"]', NULL, '{"EXA_API_KEY":""}', '{}', 'disconnected', '[]', false, true),
+('openai-mcp', 'OpenAI', 'Generez du texte, des images et des embeddings via l API OpenAI. GPT-4o, DALL-E, Whisper.', 'stdio', 'npx', '["-y", "@openai/mcp"]', NULL, '{"OPENAI_API_KEY":""}', '{}', 'disconnected', '[]', false, true),
+('elevenlabs', 'ElevenLabs', 'Synthese vocale et clone de voix AI. Generez du speech naturel en 29 langues, voice cloning, sound effects.', 'stdio', 'npx', '["-y", "mcp-elevenlabs"]', NULL, '{"ELEVENLABS_API_KEY":""}', '{}', 'disconnected', '[]', false, true),
+('firecrawl', 'Firecrawl', 'Scraping web AI-powered : convertit n importe quelle page en Markdown propre. Supporte JavaScript rendering et batch crawl.', 'stdio', 'npx', '["-y", "mcp-firecrawl"]', NULL, '{"FIRECRAWL_API_KEY":""}', '{}', 'disconnected', '[]', false, true),
+('linkedin', 'LinkedIn', 'Automatisez LinkedIn : recherche de profils, posts, jobs et networking. Scraping et analyse de donnees.', 'sse', NULL, '[]', 'https://linkedin-mcp.example.com/sse', '{"LINKEDIN_ACCESS_TOKEN":""}', '{}', 'disconnected', '[]', false, true),
+('google-cloud-sql', 'Google Cloud SQL', 'Connectez-vous a vos bases PostgreSQL/MySQL managees sur Google Cloud. Proxy Cloud SQL integre.', 'sse', NULL, '[]', 'https://cloudsql-mcp.example.com/sse', '{"CLOUDSQL_INSTANCE":"","CLOUDSQL_DATABASE":"","CLOUDSQL_USER":"","CLOUDSQL_PASSWORD":""}', '{}', 'disconnected', '[]', false, true),
+('google-security-ops', 'Google Security Operations', 'SIEM Chronicle, detection de menaces, investigation securite. Analyse de logs et threat intelligence.', 'sse', NULL, '[]', 'https://google-security-mcp.example.com/sse', '{"CHRONICLE_CUSTOMER_ID":"","CHRONICLE_API_KEY":""}', '{}', 'disconnected', '[]', false, true),
+('stripe-billing', 'Stripe Billing', 'Subscriptions, invoices, usage-based billing et customer portal via Stripe Billing.', 'stdio', 'npx', '["-y", "mcp-stripe-billing"]', NULL, '{"STRIPE_SECRET_KEY":""}', '{}', 'disconnected', '[]', false, true)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  transport = EXCLUDED.transport,
+  command = EXCLUDED.command,
+  args = EXCLUDED.args,
+  url = EXCLUDED.url,
+  env = EXCLUDED.env,
+  headers = EXCLUDED.headers,
+  auto_sync_cli = EXCLUDED.auto_sync_cli,
+  enabled = EXCLUDED.enabled;

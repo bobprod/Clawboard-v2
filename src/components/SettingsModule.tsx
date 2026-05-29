@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Settings,
@@ -34,9 +34,23 @@ import {
   Wrench,
   BarChart2,
   Package,
+  Plug,
+  ToyBrick,
+  Info,
 } from "lucide-react";
 import { useApiKeys } from "../hooks/useApiKeys";
 import { apiFetch } from "../lib/apiFetch";
+
+// Heavy capability modules — lazy-loaded so they don't bloat the settings chunk
+const McpModule = lazy(() =>
+  import("./McpModule").then((m) => ({ default: m.McpModule })),
+);
+const SkillsModule = lazy(() =>
+  import("./SkillsModule").then((m) => ({ default: m.SkillsModule })),
+);
+const ToolsModule = lazy(() =>
+  import("./ToolsModule").then((m) => ({ default: m.ToolsModule })),
+);
 
 // ─── Provider catalogue ───────────────────────────────────────────────────────
 
@@ -248,6 +262,26 @@ const PROVIDERS: Provider[] = [
     docsUrl: "https://www.perplexity.ai/settings/api",
     models: ["sonar-pro", "sonar", "sonar-reasoning"],
   },
+  {
+    id: "cloudflare",
+    name: "Cloudflare Workers AI",
+    shortName: "Cloudflare",
+    category: "Agrégateurs",
+    color: "#f38020",
+    logo: "☁️",
+    docsUrl: "https://dash.cloudflare.com/?to=/:account/ai/workers-ai/api-quick-start",
+    models: ["Llama 3.1", "Mistral 7B", "Gemma", "Flux", "Whisper"],
+  },
+  {
+    id: "cloudflare_account",
+    name: "Cloudflare Account ID",
+    shortName: "CF Account",
+    category: "Agrégateurs",
+    color: "#f38020",
+    logo: "🆔",
+    docsUrl: "https://dash.cloudflare.com/",
+    models: ["Requis pour Cloudflare Workers AI"],
+  },
 ];
 
 const CATEGORIES = ["International", "Asie", "Agrégateurs"];
@@ -255,23 +289,65 @@ const CATEGORIES = ["International", "Asie", "Agrégateurs"];
 // ─── Settings sections ────────────────────────────────────────────────────────
 
 type Section =
+  | "mcp"
+  | "skills"
+  | "plugins"
+  | "tools"
   | "server"
   | "apikeys"
   | "ollama"
   | "security"
   | "notifications"
-  | "profile"
-  | "plugins";
+  | "profile";
 
-const NAV: { id: Section; label: string; icon: any; badge?: () => number }[] = [
-  { id: "server", label: "Serveur & Connexions", icon: Server },
-  { id: "apikeys", label: "Clés API & BYOK", icon: Key },
-  { id: "ollama", label: "LLMs Locaux", icon: HardDrive },
-  { id: "plugins", label: "Plugins", icon: Puzzle },
-  { id: "security", label: "Règles de Sécurité", icon: Shield },
-  { id: "notifications", label: "Notifications", icon: Bell },
-  { id: "profile", label: "Profil Utilisateur", icon: User },
+interface NavItem {
+  id: Section;
+  label: string;
+  icon: any;
+  badge?: () => number;
+}
+
+// Grouped navigation — Settings is the single hub for everything.
+const NAV_GROUPS: { group: string; items: NavItem[] }[] = [
+  {
+    group: "Extensions & Capacités",
+    items: [
+      { id: "mcp", label: "MCP & Connecteurs", icon: Plug },
+      { id: "skills", label: "Skills", icon: ToyBrick },
+      { id: "plugins", label: "Plugins", icon: Puzzle },
+      { id: "tools", label: "Outils Agent", icon: Wrench },
+    ],
+  },
+  {
+    group: "Configuration",
+    items: [
+      { id: "server", label: "Serveur & Connexions", icon: Server },
+      { id: "apikeys", label: "Clés API & BYOK", icon: Key },
+      { id: "ollama", label: "LLMs Locaux", icon: HardDrive },
+      { id: "security", label: "Règles de Sécurité", icon: Shield },
+      { id: "notifications", label: "Notifications", icon: Bell },
+    ],
+  },
+  {
+    group: "Compte",
+    items: [{ id: "profile", label: "Profil Utilisateur", icon: User }],
+  },
 ];
+
+// Flat list for lookups
+const NAV: NavItem[] = NAV_GROUPS.flatMap((g) => g.items);
+
+// "App-like" sections render their own full module (no boxed form panel).
+const APP_SECTIONS = new Set<Section>(["mcp", "skills", "tools"]);
+
+// Extension sections show a one-line clarifier so MCP / Skills / Plugins /
+// Outils stay distinct and complementary in the user's mind.
+const EXTENSION_HINTS: Partial<Record<Section, string>> = {
+  mcp: "Outils externes branchés via le protocole MCP (filesystem, GitHub, APIs…). Complémentaire des Skills (compétences) et des Plugins (canaux).",
+  skills: "Compétences/prompts réutilisables (rédaction, code, analyse…). Ce ne sont pas des outils : elles orientent le comportement de l'agent.",
+  plugins: "Extensions du runtime OpenClaw : canaux de communication (Twitch, Matrix, Teams…), outils cœur et diagnostics. Différent des serveurs MCP.",
+  tools: "Gouvernance des outils intégrés : profils, permissions allow/deny. Contrôle ce que les agents ont le droit d'exécuter.",
+};
 
 // ─── KeyRow component ─────────────────────────────────────────────────────────
 
@@ -4083,6 +4159,33 @@ const PluginsSection = () => {
   );
 };
 
+// ─── ExtensionHint — clarifies MCP vs Skills vs Plugins vs Outils ─────────────
+
+const ExtensionHint = ({ text }: { text: string }) => (
+  <div
+    style={{
+      display: "flex",
+      alignItems: "flex-start",
+      gap: 10,
+      padding: "12px 16px",
+      marginBottom: 18,
+      borderRadius: "var(--radius-md, 12px)",
+      background: "rgba(139,92,246,0.08)",
+      border: "1px solid rgba(139,92,246,0.2)",
+      fontSize: "0.82rem",
+      color: "var(--text-secondary)",
+      lineHeight: 1.5,
+    }}
+  >
+    <Info
+      size={16}
+      color="var(--brand-accent)"
+      style={{ flexShrink: 0, marginTop: 1 }}
+    />
+    <span>{text}</span>
+  </div>
+);
+
 // ─── SettingsModule ───────────────────────────────────────────────────────────
 
 export const SettingsModule = () => {
@@ -4112,6 +4215,12 @@ export const SettingsModule = () => {
 
   const renderContent = () => {
     switch (section) {
+      case "mcp":
+        return <McpModule embedded />;
+      case "skills":
+        return <SkillsModule />;
+      case "tools":
+        return <ToolsModule />;
       case "server":
         return <ServerSection />;
       case "apikeys":
@@ -4128,6 +4237,9 @@ export const SettingsModule = () => {
         return <ProfileSection />;
     }
   };
+
+  const isApp = APP_SECTIONS.has(section);
+  const hint = EXTENSION_HINTS[section];
 
   return (
     <div
@@ -4175,42 +4287,44 @@ export const SettingsModule = () => {
           </div>
         </div>
 
-        <button
-          onClick={handleGlobalSave}
-          disabled={isSaving}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "10px 24px",
-            borderRadius: 8,
-            border: "none",
-            background: saved
-              ? "var(--status-success)"
-              : "var(--brand-primary)",
-            color: "#fff",
-            cursor: isSaving ? "not-allowed" : "pointer",
-            fontWeight: 600,
-            transition: "all 0.3s",
-            boxShadow: saved ? "0 0 15px rgba(16,185,129,0.4)" : "none",
-          }}
-        >
-          {isSaving ? (
-            <Loader2
-              size={18}
-              style={{ animation: "spin 1s linear infinite" }}
-            />
-          ) : saved ? (
-            <Check size={18} />
-          ) : (
-            <Save size={18} />
-          )}
-          {isSaving
-            ? "Enregistrement…"
-            : saved
-              ? "Sauvegardé !"
-              : "Enregistrer"}
-        </button>
+        {!isApp && (
+          <button
+            onClick={handleGlobalSave}
+            disabled={isSaving}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "10px 24px",
+              borderRadius: 8,
+              border: "none",
+              background: saved
+                ? "var(--status-success)"
+                : "var(--brand-primary)",
+              color: "#fff",
+              cursor: isSaving ? "not-allowed" : "pointer",
+              fontWeight: 600,
+              transition: "all 0.3s",
+              boxShadow: saved ? "0 0 15px rgba(16,185,129,0.4)" : "none",
+            }}
+          >
+            {isSaving ? (
+              <Loader2
+                size={18}
+                style={{ animation: "spin 1s linear infinite" }}
+              />
+            ) : saved ? (
+              <Check size={18} />
+            ) : (
+              <Save size={18} />
+            )}
+            {isSaving
+              ? "Enregistrement…"
+              : saved
+                ? "Sauvegardé !"
+                : "Enregistrer"}
+          </button>
+        )}
       </div>
 
       {/* 2-column layout */}
@@ -4222,87 +4336,135 @@ export const SettingsModule = () => {
           alignItems: "start",
         }}
       >
-        {/* Nav */}
+        {/* Nav — grouped */}
         <nav style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          {NAV.map((item) => {
-            const Icon = item.icon;
-            const active = section === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setSection(item.id)}
+          {NAV_GROUPS.map((grp) => (
+            <div key={grp.group} style={{ marginBottom: 10 }}>
+              <div
                 style={{
-                  padding: "13px 16px",
-                  borderRadius: 12,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  background: active ? "rgba(139,92,246,0.12)" : "transparent",
-                  border: active
-                    ? "1px solid rgba(139,92,246,0.25)"
-                    : "1px solid transparent",
-                  color: active
-                    ? "var(--brand-accent)"
-                    : "var(--text-secondary)",
-                  textAlign: "left",
-                  fontWeight: active ? 700 : 500,
-                  cursor: "pointer",
-                  transition: "all 0.15s",
-                  fontSize: "0.9rem",
-                }}
-                onMouseOver={(e) => {
-                  if (!active)
-                    e.currentTarget.style.background = "rgba(255,255,255,0.04)";
-                }}
-                onMouseOut={(e) => {
-                  if (!active) e.currentTarget.style.background = "transparent";
+                  fontSize: "0.66rem",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.7px",
+                  color: "var(--text-muted)",
+                  padding: "8px 16px 6px",
                 }}
               >
-                <Icon size={18} />
-                <span style={{ flex: 1 }}>{item.label}</span>
-                {item.id === "apikeys" && configuredCount > 0 && (
-                  <span
+                {grp.group}
+              </div>
+              {grp.items.map((item) => {
+                const Icon = item.icon;
+                const active = section === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setSection(item.id)}
                     style={{
-                      padding: "2px 8px",
-                      borderRadius: 20,
-                      fontSize: "0.7rem",
-                      fontWeight: 700,
-                      background: "rgba(16,185,129,0.15)",
-                      color: "#10b981",
+                      width: "100%",
+                      padding: "12px 16px",
+                      borderRadius: 12,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      background: active
+                        ? "rgba(139,92,246,0.12)"
+                        : "transparent",
+                      border: active
+                        ? "1px solid rgba(139,92,246,0.25)"
+                        : "1px solid transparent",
+                      color: active
+                        ? "var(--brand-accent)"
+                        : "var(--text-secondary)",
+                      textAlign: "left",
+                      fontWeight: active ? 700 : 500,
+                      cursor: "pointer",
+                      transition: "all 0.15s",
+                      fontSize: "0.9rem",
+                    }}
+                    onMouseOver={(e) => {
+                      if (!active)
+                        e.currentTarget.style.background =
+                          "rgba(255,255,255,0.04)";
+                    }}
+                    onMouseOut={(e) => {
+                      if (!active)
+                        e.currentTarget.style.background = "transparent";
                     }}
                   >
-                    {configuredCount}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+                    <Icon size={18} />
+                    <span style={{ flex: 1 }}>{item.label}</span>
+                    {item.id === "apikeys" && configuredCount > 0 && (
+                      <span
+                        style={{
+                          padding: "2px 8px",
+                          borderRadius: 20,
+                          fontSize: "0.7rem",
+                          fontWeight: 700,
+                          background: "rgba(16,185,129,0.15)",
+                          color: "#10b981",
+                        }}
+                      >
+                        {configuredCount}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         {/* Content panel */}
-        <div className="glass-panel" style={{ padding: 32 }}>
-          <h3
-            style={{
-              margin: "0 0 20px",
-              fontSize: "1.1rem",
-              paddingBottom: 16,
-              borderBottom: "1px solid var(--border-subtle)",
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-            }}
-          >
-            {(() => {
-              const n = NAV.find((n) => n.id === section);
-              const Icon = n?.icon;
-              return Icon ? (
-                <Icon size={18} color="var(--brand-accent)" />
-              ) : null;
-            })()}
-            {NAV.find((n) => n.id === section)?.label}
-          </h3>
-          {renderContent()}
-        </div>
+        {isApp ? (
+          // App-like sections (MCP / Skills / Outils) render full-bleed —
+          // they own their layout, header and persistence.
+          <div style={{ minWidth: 0 }}>
+            {hint && <ExtensionHint text={hint} />}
+            <Suspense
+              fallback={
+                <div
+                  style={{
+                    padding: 40,
+                    textAlign: "center",
+                    color: "var(--text-muted)",
+                  }}
+                >
+                  <Loader2
+                    size={22}
+                    style={{ animation: "spin 1s linear infinite" }}
+                  />
+                </div>
+              }
+            >
+              {renderContent()}
+            </Suspense>
+          </div>
+        ) : (
+          <div className="glass-panel" style={{ padding: 32, minWidth: 0 }}>
+            <h3
+              style={{
+                margin: "0 0 20px",
+                fontSize: "1.1rem",
+                paddingBottom: 16,
+                borderBottom: "1px solid var(--border-subtle)",
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+              }}
+            >
+              {(() => {
+                const n = NAV.find((n) => n.id === section);
+                const Icon = n?.icon;
+                return Icon ? (
+                  <Icon size={18} color="var(--brand-accent)" />
+                ) : null;
+              })()}
+              {NAV.find((n) => n.id === section)?.label}
+            </h3>
+            {hint && <ExtensionHint text={hint} />}
+            {renderContent()}
+          </div>
+        )}
       </div>
 
       <style>{`

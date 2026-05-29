@@ -1,0 +1,20 @@
+{
+  "name": "code-writer",
+  "version": "1.0.0",
+  "description": "Generation et edition de code source avec support multi-langages, refactorisation et bonnes pratiques.",
+  "type": "builtin",
+  "tools": ["write_file", "read_file", "exec_command"],
+  "prompt_template": "Tu es un expert en programmation. Tache: {{task}}\n\nLangage: {{language}}\nEcris du code propre, documente, et testable.\nRespecte les conventions du projet existant.",
+  "inputs": [
+    { "name": "task", "type": "string", "required": true, "description": "Description de la tache de code" },
+    { "name": "language", "type": "string", "required": false, "description": "Langage cible (typescript, python, etc.)" },
+    { "name": "context", "type": "string", "required": false, "description": "Contexte ou fichiers existants" }
+  ],
+  "outputs": [
+    { "name": "code", "type": "string", "description": "Code genere" },
+    { "name": "files", "type": "array", "description": "Fichiers crees modifies" }
+  ],
+  "tags": ["code", "programming", "generation", "refactor"],
+  "author": "clawboard",
+  "enabled": true
+}

@@ -1,73 +1,142 @@
-# React + TypeScript + Vite
+# ClawBoard — AI Agent Orchestrator
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> Multi-agent orchestration dashboard for NemoClaw with MCP, ACP, and universal model support.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Multi-Agent Dashboard** — Kanban, tasks, archives, recurrences
+- **AI Chat** — Real-time streaming with tool calls, plans, and memory
+- **Cowork Sessions** — Autonomous agent execution with human-in-the-loop
+- **MCP Integration** — Connect any MCP server, sync tools across agents
+- **ACP Multi-Agent** — Team Mode with Leader/Teammate orchestration
+- **35 Built-in Skills** — Code, docs, web, files, images — model-agnostic
+- **6 Themes** — Dark, Light, Synthwave, Nord, Catppuccin, Ocean
+- **Scheduled Tasks** — Cron-based automation with keep-awake
+- **Security** — 4-layer security (network, filesystem, process, inference)
 
-## React Compiler
+## Quick Start
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Prerequisites
+- Node.js 22+
+- PostgreSQL 16+
+- Redis (optional, graceful fallback)
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Install
+```bash
+git clone https://github.com/your-org/clawboard.git
+cd clawboard
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Configure
+```bash
+cp .env.example .env
+# Edit .env with your database and API keys
 ```
+
+### Run
+```bash
+# Frontend (Vite dev server)
+npm run dev
+
+# Backend (Node.js API server)
+npm run server
+```
+
+### Docker
+```bash
+docker-compose up -d
+```
+
+## Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 19, TypeScript 5.9, Vite 8 |
+| Routing | React Router DOM 7 |
+| State | @tanstack/react-query, SSE |
+| Styling | CSS Variables + 6 themes |
+| Editor | @monaco-editor/react |
+| Markdown | react-markdown + remark-gfm |
+| DnD | @dnd-kit |
+| Virtualization | react-virtuoso |
+| Backend | Node.js 22 (ES modules) |
+| Database | PostgreSQL 16 (pg pool) |
+| Cache | Redis 5 (optional) |
+| MCP | @modelcontextprotocol/sdk |
+| Validation | Zod |
+| Testing | Vitest + Playwright |
+
+## Architecture
+
+```
+src/
+  main.tsx              — Entry point, QueryClientProvider
+  App.tsx               — Router, sidebar, ThemeSwitcher
+  hooks/
+    useSSE.ts           — Singleton SSE (1 EventSource per URL)
+    useQueryData.ts     — React Query hooks for API
+  components/
+    Dashboard.tsx       — Main dashboard with widgets
+    ChatModule.tsx      — AI chat with streaming
+    TasksKanban.tsx     — Kanban board
+    TachesPage.tsx      — Tasks, archives, recurrences
+    McpManager.tsx      — MCP server management
+    AcpManager.tsx      — ACP agent management
+    TeamMode.tsx        — Multi-agent team orchestration
+    PreviewPanel.tsx    — Multi-format file preview
+    SkillToggle.tsx     — Skill activation per conversation
+    MarkdownRenderer.tsx — react-markdown based renderer
+  lib/
+    apiFetch.ts         — Auth-aware fetch wrapper
+    queryClient.ts      — React Query client config
+    validate.mjs        — Zod validation schemas
+    mcp/                — MCP client & server
+    acp/                — ACP client & server
+    llm/                — LLM adapter, skill loader
+server.mjs              — Backend HTTP server
+routes/                 — API route handlers
+database/               — Schema & migrations
+skills/                 — Built-in skill definitions
+```
+
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | /api/tasks | List tasks (paginated) |
+| POST | /api/tasks | Create task |
+| PATCH | /api/tasks/:id | Update task |
+| POST | /api/tasks/:id/run | Execute task |
+| GET | /api/tasks?stream=1 | SSE live task stream |
+| GET | /api/quota | SSE quota stream |
+| GET | /api/mcp/servers | List MCP servers |
+| POST | /api/mcp/servers | Add MCP server |
+| GET | /api/acp/agents | List ACP agents |
+| POST | /api/acp/team/create | Create team session |
+| GET | /api/skills | List available skills |
+| GET | /api/memory | List memory documents |
+| GET | /api/files | List workspace files |
+| GET | /api/files/* | Read file content |
+| PUT | /api/files/* | Write file content |
+| GET | /api/files/diff/* | Get git diff for file |
+
+## Security
+
+- **Network**: SSRF protection, CORS, rate limiting
+- **Filesystem**: Path allowlist, executable blocking, 512KB limit
+- **Process**: Command allowlist, dangerous pattern blocking, timeouts
+- **Inference**: Credential isolation, circuit breaker, token limits
+- **Auth**: Bearer token, AES-256-GCM encryption for API keys
+
+## Testing
+
+```bash
+npm run test:unit    # Vitest unit tests
+npm run test:api     # Node.js API tests
+npm run test:e2e     # Playwright E2E tests
+```
+
+## License
+
+MIT
