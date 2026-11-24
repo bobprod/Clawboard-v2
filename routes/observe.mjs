@@ -2,15 +2,20 @@
 // Verification visuelle generique : capture de l'ecran + question a un modele vision.
 //
 // POST /api/computer-use/observe
-//   { question: "Le clip est-il sur la piste Bass ?", model?: "gemini-2.5-flash" }
+//   { question, provider?: "auto"|"opencode"|"gemini", model? }
 //   -> { ok, raison, details, model, provider, capture }
 //
-// A utiliser uniquement quand l'utilisateur demande explicitement de verifier
-// ou de regarder l'ecran. Ne remplace pas les actions MCP/API.
+// Fournisseurs :
+//  - opencode (API compatible OpenAI) : https://opencode.ai/inference/openai/v1
+//    modeles gratuits avec vision : nemotron-3.5-super-vl-free, mimo-v2.6-flash-free,
+//    deepseek-v4.1-flash-free, jev-1.13-free, hy4-flash-free
+//  - gemini (API native Google)
+//
+// A utiliser uniquement quand l'utilisateur demande explicitement de verifier l'ecran.
 
 import { execFile } from "child_process";
 import { promisify } from "util";
-import { mkdir, writeFile, appendFile, readdir, unlink } from "fs/promises";
+import { mkdir, writeFile, appendFile, readdir, unlink, stat } from "fs/promises";
 import { homedir } from "os";
 import { join } from "path";
 
@@ -30,7 +35,15 @@ const PS_CAPTURE = [
   "[Convert]::ToBase64String($ms.ToArray())",
 ].join("; ");
 
-const DEFAULT_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+const OPENCODE_MODELS = [
+  "nemotron-3.5-super-vl-free",
+  "mimo-v2.6-flash-free",
+  "deepseek-v4.1-flash-free",
+  "hy4-flash-free",
+];
+
+const OPENCODE_BASE = process.env.OBSERVE_BASE_URL || "https://opencode.ai/inference/openai/v1";
 
 let lastCallAt = 0;
 
@@ -103,6 +116,43 @@ async function askGemini(key, model, imageBase64, question) {
   return parseAnswer(text);
 }
 
+async function askOpenCode(key, model, imageBase64, question) {
+  const url = `${OPENCODE_BASE.replace(/\/$/, "")}/chat/completions`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${key}`,
+    },
+    body: JSON.stringify({
+      model,
+      temperature: 0,
+      max_tokens: 400,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: buildPrompt(question) },
+            { type: "image_url", image_url: { url: `data:image/png;base64,${imageBase64}` } },
+          ],
+        },
+      ],
+    }),
+  });
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    const error = new Error(`OpenCode HTTP ${res.status} ${detail.slice(0, 200)}`);
+    error.status = res.status;
+    throw error;
+  }
+
+  const data = await res.json();
+  const content = data?.choices?.[0]?.message?.content;
+  const text = typeof content === "string" ? content : JSON.stringify(content || "");
+  return parseAnswer(text);
+}
+
 async function cleanupOldCaptures() {
   try {
     const files = await readdir(CAPTURE_DIR);
@@ -110,13 +160,65 @@ async function cleanupOldCaptures() {
     for (const name of files) {
       if (!name.endsWith(".png")) continue;
       const path = join(CAPTURE_DIR, name);
-      const { stat } = await import("fs/promises");
       const info = await stat(path);
       if (now - info.mtimeMs > RETENTION_MS) await unlink(path);
     }
   } catch {
     /* dossier absent ou verrouille */
   }
+}
+
+async function resolveKeys(ctx) {
+  let gemini = process.env.GEMINI_API_KEY || null;
+  let opencode = process.env.OPENCODE_API_KEY || process.env.OBSERVE_API_KEY || null;
+
+  try {
+    const { rows } = await ctx.pool.query(
+      "SELECT provider, encrypted_value FROM api_keys WHERE provider IN ('gemini','opencode','opencode-go','opencode-zen')",
+    );
+    for (const row of rows) {
+      const value = ctx.decryptKey(row.encrypted_value);
+      if (!value) continue;
+      if (row.provider === "gemini" && !gemini) gemini = value;
+      else if (!opencode) opencode = value;
+    }
+  } catch {
+    /* base indisponible : on garde les variables d'environnement */
+  }
+
+  return { gemini, opencode };
+}
+
+async function tryProvider(name, keys, image, question, requestedModel) {
+  if (name === "opencode") {
+    if (!keys.opencode) throw Object.assign(new Error("Cle OpenCode absente"), { status: 401 });
+    const models = requestedModel ? [requestedModel, ...OPENCODE_MODELS] : OPENCODE_MODELS;
+    let lastError = null;
+    for (const model of [...new Set(models)]) {
+      try {
+        const result = await askOpenCode(keys.opencode, model, image, question);
+        return { ...result, provider: "opencode", model };
+      } catch (err) {
+        lastError = err;
+        if (err.status === 401 || err.status === 403) break;
+      }
+    }
+    throw lastError || new Error("Echec OpenCode");
+  }
+
+  if (!keys.gemini) throw Object.assign(new Error("Cle Gemini absente"), { status: 401 });
+  const models = requestedModel ? [requestedModel, ...GEMINI_MODELS] : GEMINI_MODELS;
+  let lastError = null;
+  for (const model of [...new Set(models)]) {
+    try {
+      const result = await askGemini(keys.gemini, model, image, question);
+      return { ...result, provider: "gemini", model };
+    } catch (err) {
+      lastError = err;
+      if (err.status === 400 || err.status === 401 || err.status === 403) break;
+    }
+  }
+  throw lastError || new Error("Echec Gemini");
 }
 
 export function register(router, ctx) {
@@ -142,71 +244,65 @@ export function register(router, ctx) {
         );
         await writeFile(capturePath, Buffer.from(image, "base64"));
 
-        const { rows } = await ctx.pool.query(
-          "SELECT encrypted_value FROM api_keys WHERE provider = 'gemini' LIMIT 1",
-        );
-        let key = rows[0]?.encrypted_value ? ctx.decryptKey(rows[0].encrypted_value) : null;
-        if (!key) key = process.env.GEMINI_API_KEY || process.env.OBSERVE_API_KEY || null;
-        if (!key) {
+        const keys = await resolveKeys(ctx);
+        const wanted = String(b?.provider || process.env.OBSERVE_PROVIDER || "auto").toLowerCase();
+
+        const attempts =
+          wanted === "opencode"
+            ? ["opencode"]
+            : wanted === "gemini"
+              ? ["gemini"]
+              : [keys.opencode ? "opencode" : null, keys.gemini ? "gemini" : null].filter(Boolean);
+
+        if (attempts.length === 0) {
           return json(503, {
             error:
-              "Aucune cle Gemini utilisable. Soit la cle en base a ete chiffree avec une ancienne KEK, " +
-              "soit elle est absente. Ressaisis-la dans Parametres > Cles API, ou definis GEMINI_API_KEY dans .env.",
+              "Aucun fournisseur vision disponible. Ajoute une cle OpenCode (Go/Zen) ou Gemini " +
+              "dans Parametres > Cles API, ou definis OPENCODE_API_KEY / GEMINI_API_KEY dans .env.",
             capture: capturePath,
           });
         }
 
-        const requested = String(b?.model || process.env.OBSERVE_MODEL || "").trim();
-        const candidates = requested
-          ? [requested, ...DEFAULT_MODELS.filter((m) => m !== requested)]
-          : DEFAULT_MODELS;
-
-        let lastError = null;
-        for (const model of candidates) {
+        const errors = [];
+        for (const name of attempts) {
           try {
-            const result = await askGemini(key, model, image, question);
+            const result = await tryProvider(name, keys, image, question, b?.model);
             await appendFile(
               join(CAPTURE_DIR, "observe-audit.jsonl"),
               JSON.stringify({
                 ts: new Date().toISOString(),
                 question,
-                model,
+                provider: result.provider,
+                model: result.model,
                 ok: result.ok,
                 capture: capturePath,
               }) + "\n",
               "utf8",
             );
             void cleanupOldCaptures();
-            return json(200, { ...result, model, provider: "gemini", capture: capturePath });
+            return json(200, { ...result, capture: capturePath });
           } catch (err) {
-            lastError = err;
-            if (err.status === 400 || err.status === 401 || err.status === 403) break;
+            errors.push(`${name}: ${err.message}`);
           }
         }
 
-        return json(502, {
-          error: lastError?.message || "Echec du modele vision",
-          capture: capturePath,
-        });
+        return json(502, { error: "Echec de tous les fournisseurs vision", details: errors, capture: capturePath });
       } catch (err) {
         return json(500, { error: err.message, capture: capturePath });
       }
     });
   });
 
-  // Etat : l'outil est-il disponible (cle presente) ?
   router.get("/api/computer-use/observe/status", async ({ json }) => {
     try {
-      const { rows } = await ctx.pool.query(
-        "SELECT encrypted_value FROM api_keys WHERE provider = 'gemini' LIMIT 1",
-      );
-      const dbKey = rows[0]?.encrypted_value ? ctx.decryptKey(rows[0].encrypted_value) : null;
-      const envKey = process.env.GEMINI_API_KEY || process.env.OBSERVE_API_KEY || null;
+      const keys = await resolveKeys(ctx);
       json(200, {
-        available: Boolean(dbKey || envKey),
-        source: dbKey ? "database" : envKey ? "env" : null,
-        provider: "gemini",
-        defaultModel: process.env.OBSERVE_MODEL || DEFAULT_MODELS[0],
+        available: Boolean(keys.opencode || keys.gemini),
+        providers: {
+          opencode: { available: Boolean(keys.opencode), baseUrl: OPENCODE_BASE, models: OPENCODE_MODELS },
+          gemini: { available: Boolean(keys.gemini), models: GEMINI_MODELS },
+        },
+        defaultOrder: [keys.opencode ? "opencode" : null, keys.gemini ? "gemini" : null].filter(Boolean),
         captureDir: CAPTURE_DIR,
         retentionDays: 7,
       });
