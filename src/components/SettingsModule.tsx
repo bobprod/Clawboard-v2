@@ -37,6 +37,7 @@ import {
   Plug,
   ToyBrick,
   Info,
+  Mic,
 } from "lucide-react";
 import { useApiKeys } from "../hooks/useApiKeys";
 import { apiFetch } from "../lib/apiFetch";
@@ -50,6 +51,9 @@ const SkillsModule = lazy(() =>
 );
 const ToolsModule = lazy(() =>
   import("./ToolsModule").then((m) => ({ default: m.ToolsModule })),
+);
+const VoiceSettingsPanel = lazy(() =>
+  import("./VoiceSettingsPanel").then((m) => ({ default: m.VoiceSettingsPanel })),
 );
 
 // ─── Provider catalogue ───────────────────────────────────────────────────────
@@ -298,6 +302,7 @@ type Section =
   | "ollama"
   | "security"
   | "notifications"
+  | "voice"
   | "profile";
 
 interface NavItem {
@@ -326,6 +331,7 @@ const NAV_GROUPS: { group: string; items: NavItem[] }[] = [
       { id: "ollama", label: "LLMs Locaux", icon: HardDrive },
       { id: "security", label: "Règles de Sécurité", icon: Shield },
       { id: "notifications", label: "Notifications", icon: Bell },
+      { id: "voice", label: "Voix & micro", icon: Mic },
     ],
   },
   {
@@ -4233,6 +4239,8 @@ export const SettingsModule = () => {
         return <SecuritySection />;
       case "notifications":
         return <NotificationsSection />;
+      case "voice":
+        return <VoiceSettingsPanel />;
       case "profile":
         return <ProfileSection />;
     }
