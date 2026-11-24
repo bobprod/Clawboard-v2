@@ -37,13 +37,12 @@ const PS_CAPTURE = [
 
 const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
 const OPENCODE_MODELS = [
-  "nemotron-3.5-super-vl-free",
-  "mimo-v2.6-flash-free",
-  "deepseek-v4.1-flash-free",
   "hy4-flash-free",
+  "hungerg-free",
+  "gemini-4-argon",
 ];
 
-const OPENCODE_BASE = process.env.OBSERVE_BASE_URL || "https://opencode.ai/inference/openai/v1";
+const OPENCODE_BASE = process.env.OBSERVE_BASE_URL || "https://opencode.ai/inference/go/v1";
 
 let lastCallAt = 0;
 
@@ -113,6 +112,11 @@ async function askGemini(key, model, imageBase64, question) {
 
   const data = await res.json();
   const text = data?.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join(" ") || "";
+  if (!text.trim()) {
+    const error = new Error("Reponse vide");
+    error.status = 502;
+    throw error;
+  }
   return parseAnswer(text);
 }
 
@@ -123,6 +127,7 @@ async function askOpenCode(key, model, imageBase64, question) {
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${key}`,
+      "x-opencode-session": "clawboard-observe",
     },
     body: JSON.stringify({
       model,
@@ -150,6 +155,11 @@ async function askOpenCode(key, model, imageBase64, question) {
   const data = await res.json();
   const content = data?.choices?.[0]?.message?.content;
   const text = typeof content === "string" ? content : JSON.stringify(content || "");
+  if (!text || !text.trim()) {
+    const error = new Error("Reponse vide");
+    error.status = 502;
+    throw error;
+  }
   return parseAnswer(text);
 }
 
@@ -195,12 +205,14 @@ async function tryProvider(name, keys, image, question, requestedModel) {
     const models = requestedModel ? [requestedModel, ...OPENCODE_MODELS] : OPENCODE_MODELS;
     let lastError = null;
     for (const model of [...new Set(models)]) {
-      try {
-        const result = await askOpenCode(keys.opencode, model, image, question);
-        return { ...result, provider: "opencode", model };
-      } catch (err) {
-        lastError = err;
-        if (err.status === 401 || err.status === 403) break;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const result = await askOpenCode(keys.opencode, model, image, question);
+          return { ...result, provider: "opencode", model };
+        } catch (err) {
+          lastError = err;
+          if (err.status === 401 || err.status === 403) break;
+        }
       }
     }
     throw lastError || new Error("Echec OpenCode");
@@ -210,12 +222,14 @@ async function tryProvider(name, keys, image, question, requestedModel) {
   const models = requestedModel ? [requestedModel, ...GEMINI_MODELS] : GEMINI_MODELS;
   let lastError = null;
   for (const model of [...new Set(models)]) {
-    try {
-      const result = await askGemini(keys.gemini, model, image, question);
-      return { ...result, provider: "gemini", model };
-    } catch (err) {
-      lastError = err;
-      if (err.status === 400 || err.status === 401 || err.status === 403) break;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const result = await askGemini(keys.gemini, model, image, question);
+        return { ...result, provider: "gemini", model };
+      } catch (err) {
+        lastError = err;
+        if (err.status === 400 || err.status === 401 || err.status === 403) break;
+      }
     }
   }
   throw lastError || new Error("Echec Gemini");
