@@ -30,6 +30,14 @@ type VoiceSettings = {
   rate: number;
 };
 
+type SystemAudio = {
+  supported: boolean;
+  inputs: string[];
+  outputs: string[];
+  cards: string[];
+  error?: string;
+};
+
 const DIACRITICS = /[\u0300-\u036f]/g;
 const normalize = (s: string) => s.normalize("NFD").replace(DIACRITICS, "").toLowerCase();
 
@@ -86,6 +94,7 @@ export function VoiceAssistant() {
   const [testing, setTesting] = useState(false);
   const [level, setLevel] = useState(0);
   const [testError, setTestError] = useState<string | null>(null);
+  const [systemAudio, setSystemAudio] = useState<SystemAudio | null>(null);
 
   const recognitionRef = useRef<any>(null);
   const finalTextRef = useRef("");
@@ -147,6 +156,17 @@ export function VoiceAssistant() {
     navigator.mediaDevices?.addEventListener?.("devicechange", handler);
     return () => navigator.mediaDevices?.removeEventListener?.("devicechange", handler);
   }, [refreshDevices]);
+
+  // ── Etat de la permission micro ────────────────────────────────────────
+  // ── Peripheriques audio systeme (lus par le backend, pas par le navigateur) ──
+  const refreshSystemAudio = useCallback(async () => {
+    const { data } = await apiFetchJson<SystemAudio>(`${API_BASE}/api/audio/devices`);
+    if (data) setSystemAudio(data);
+  }, []);
+
+  useEffect(() => {
+    if (settingsOpen) void refreshSystemAudio();
+  }, [settingsOpen, refreshSystemAudio]);
 
   // ── Etat de la permission micro ────────────────────────────────────────
   useEffect(() => {
@@ -570,6 +590,40 @@ export function VoiceAssistant() {
                     {testError} — le navigateur intégré d'OpenCode bloque le micro : utilise Chrome ou Edge.
                   </p>
                 )}
+              </div>
+
+              {/* Peripheriques systeme (lus par le backend) */}
+              <div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
+                  <span style={{ color: "var(--text-secondary, #9ca3af)" }}>Périphériques système</span>
+                  <button style={smallBtn} onClick={() => void refreshSystemAudio()}>
+                    Actualiser
+                  </button>
+                </div>
+                {systemAudio?.supported ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "3px", maxHeight: "130px", overflowY: "auto" }}>
+                    {systemAudio.inputs.length === 0 && (
+                      <span style={{ color: "#6b7280", fontSize: "0.72rem" }}>Aucune entrée détectée par le système.</span>
+                    )}
+                    {systemAudio.inputs.map((name) => (
+                      <span key={name} style={{ fontSize: "0.74rem", color: "var(--text-primary, #fff)" }}>
+                        🎙 {name}
+                      </span>
+                    ))}
+                    {systemAudio.cards.length > 0 && (
+                      <span style={{ fontSize: "0.68rem", color: "#6b7280", marginTop: "4px" }}>
+                        Cartes : {systemAudio.cards.join(", ")}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <span style={{ color: "#6b7280", fontSize: "0.72rem" }}>
+                    {systemAudio?.error ? `Indisponible : ${systemAudio.error}` : "Lecture du système…"}
+                  </span>
+                )}
+                <span style={{ display: "block", color: "#6b7280", fontSize: "0.68rem", marginTop: "4px", lineHeight: 1.4 }}>
+                  Liste lue par le serveur, indépendante du navigateur. Le navigateur n'expose les micros qu'après autorisation.
+                </span>
               </div>
 
               {/* Micro d'entree */}

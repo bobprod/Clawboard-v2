@@ -47,6 +47,7 @@ import { register as registerMcpRoutes } from "./routes/mcp.mjs";
 import { register as registerAcpRoutes } from "./routes/acp.mjs";
 import { register as registerSkillRoutes } from "./routes/skills.mjs";
 import { register as registerFileRoutes } from "./routes/files.mjs";
+import { register as registerAudioRoutes } from "./routes/audio.mjs";
 import { register as registerAgentStoreRoutes } from "./routes/agent-store.mjs";
 import { createMcpSseHandler } from "./src/lib/mcp/server.mjs";
 
@@ -3812,6 +3813,7 @@ registerMcpRoutes(router, routeCtx);
 registerAcpRoutes(router, routeCtx);
 registerSkillRoutes(router, routeCtx);
 registerFileRoutes(router);
+registerAudioRoutes(router);
 registerAgentStoreRoutes(router, routeCtx);
 
 // ── MCP SSE endpoint (separate from router — uses its own handler) ──────────
