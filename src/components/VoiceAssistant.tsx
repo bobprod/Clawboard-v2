@@ -698,8 +698,15 @@ export function VoiceAssistant() {
                 </button>
                 {testError && (
                   <p style={{ margin: "6px 0 0", color: "#f59e0b", fontSize: "0.72rem" }}>
-                    {testError} — le navigateur intégré d'OpenCode bloque le micro : utilise Chrome ou Edge.
+                    {testError}
                   </p>
+                )}
+                {micState === "denied" && (
+                  <div style={{ marginTop: "6px", padding: "8px", borderRadius: "8px", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", fontSize: "0.72rem", color: "#fbbf24", lineHeight: 1.5 }}>
+                    Micro refusé pour ce site. Dans <strong>Chrome</strong> : clique sur le <strong>cadenas</strong> à gauche de l'adresse → <strong>Microphone</strong> → <strong>Autoriser</strong> → recharge la page.
+                    <br />
+                    (Le navigateur intégré d'OpenCode, lui, refuse toujours le micro.)
+                  </div>
                 )}
               </div>
 
@@ -881,7 +888,7 @@ export function VoiceAssistant() {
               {(micState === "denied" || !supported) && (
                 <p style={{ margin: "8px 0 0", fontSize: "0.78rem", color: "#f59e0b", lineHeight: 1.5 }}>
                   {supported
-                    ? "Le micro est bloqué dans ce navigateur. Ouvre la page dans Chrome ou Edge, ou tape ta commande ci-dessous."
+                    ? "Micro refusé pour ce site. Clique sur le cadenas à gauche de l'adresse → Microphone → Autoriser, puis recharge. Ou tape ta commande ci-dessous."
                     : "Reconnaissance vocale indisponible dans ce navigateur. Tape ta commande ci-dessous."}
                 </p>
               )}
