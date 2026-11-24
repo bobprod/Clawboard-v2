@@ -39,7 +39,8 @@ import { register as registerSecurityRoutes } from "./routes/security.mjs";
 import { register as registerSettingsRoutes } from "./routes/settings.mjs";
 import { register as registerNemoClawRoutes } from "./routes/nemoclaw.mjs";
 import { register as registerToolRoutes } from "./routes/tools.mjs";
-import { register as registerConnectorRoutes } from "./routes/connectors.mjs";
+// NOTE: connectors.mjs n'est plus importe : ses routes /api/mcp/servers
+// doublonnaient mcp.mjs (router first-match-wins). Voir plus bas.
 import { register as registerWorkspaceRoutes } from "./routes/workspace.mjs";
 import { register as registerMemoryEngineRoutes } from "./routes/memory-engine.mjs";
 import { register as registerComputerUseRoutes } from "./routes/computer-use.mjs";

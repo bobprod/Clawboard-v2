@@ -161,14 +161,10 @@ export const TourGuide = ({ run: runProp, onFinish }: TourGuideProps) => {
   const [stepIndex, setStepIndex] = useState(0);
 
   useEffect(() => {
-    // Démarrage auto pour les nouveaux utilisateurs
+    // Demarrage MANUEL uniquement : evite le double overlay avec les tours
+    // contextuels (DashboardTour, TasksTour) au premier lancement.
     if (runProp !== undefined) {
       setRun(runProp);
-      return;
-    }
-    const done = localStorage.getItem(TOUR_KEY);
-    if (!done) {
-      setTimeout(() => setRun(true), 800);
     }
   }, [runProp]);
 

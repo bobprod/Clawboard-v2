@@ -28,3 +28,7 @@ dist-ssr
 *.sln
 *.sw?
 .venv-stt/
+
+# Templates non suivis
+.env.txt
+.env.*.txt
