@@ -19,6 +19,7 @@ import {
   Upload,
 } from "lucide-react";
 import { apiFetch } from "../lib/apiFetch";
+import { MemoryEngineWidget } from "./MemoryEngineWidget";
 
 const BASE = "http://localhost:4000";
 
@@ -546,6 +547,42 @@ export const MemoryModule = () => {
             {showForm ? <X size={15} /> : <Plus size={17} />}
             {showForm ? "Annuler" : "Nouveau Doc"}
           </button>
+        </div>
+      </div>
+
+      {/* ── Section 1 : Notes ────────────────────────────────────────────── */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div
+          style={{
+            background: "rgba(236,72,153,0.12)",
+            padding: 7,
+            borderRadius: 9,
+            color: "var(--brand-secondary)",
+            display: "flex",
+          }}
+        >
+          <FileText size={15} />
+        </div>
+        <div>
+          <h3
+            style={{
+              margin: 0,
+              fontSize: "1.05rem",
+              fontWeight: 700,
+              color: "var(--text-primary)",
+            }}
+          >
+            Notes
+          </h3>
+          <div
+            style={{
+              fontSize: "11px",
+              color: "var(--text-muted)",
+              marginTop: 1,
+            }}
+          >
+            Documents QMD, fichiers système & sandbox NemoClaw
+          </div>
         </div>
       </div>
 
@@ -1503,6 +1540,52 @@ export const MemoryModule = () => {
           )}
         </div>
       </div>
+
+      {/* ── Section 2 : Base sémantique ─────────────────────────────────── */}
+      <div
+        style={{
+          borderTop: "1px solid var(--border-subtle)",
+          paddingTop: 20,
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+        }}
+      >
+        <div
+          style={{
+            background: "rgba(139,92,246,0.12)",
+            padding: 7,
+            borderRadius: 9,
+            color: "var(--brand-accent)",
+            display: "flex",
+          }}
+        >
+          <Database size={15} />
+        </div>
+        <div>
+          <h3
+            style={{
+              margin: 0,
+              fontSize: "1.05rem",
+              fontWeight: 700,
+              color: "var(--text-primary)",
+            }}
+          >
+            Base sémantique
+          </h3>
+          <div
+            style={{
+              fontSize: "11px",
+              color: "var(--text-muted)",
+              marginTop: 1,
+            }}
+          >
+            Moteur mémoire NemoClaw — sessions, autoDream, index & recherche 3
+            couches
+          </div>
+        </div>
+      </div>
+      <MemoryEngineWidget />
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }

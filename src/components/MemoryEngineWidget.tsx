@@ -161,6 +161,8 @@ export function MemoryEngineWidget() {
   return (
     <div
       style={{
+        width: "100%",
+        boxSizing: "border-box",
         background: "var(--bg-surface)",
         borderRadius: 16,
         border: "1px solid var(--border-subtle)",
