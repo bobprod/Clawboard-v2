@@ -28,6 +28,7 @@ type VoiceSettings = {
   lang: string;
   voiceName: string;
   rate: number;
+  channel: "stereo" | "left" | "right";
 };
 
 type SystemAudio = {
@@ -45,7 +46,7 @@ const normalize = (s: string) => s.normalize("NFD").replace(DIACRITICS, "").toLo
 const API_BASE = "http://localhost:4000";
 
 const SETTINGS_KEY = "clawboard-voice-settings";
-const DEFAULT_SETTINGS: VoiceSettings = { micId: "", lang: "fr-FR", voiceName: "", rate: 1.05 };
+const DEFAULT_SETTINGS: VoiceSettings = { micId: "", lang: "fr-FR", voiceName: "", rate: 1.05, channel: "stereo" };
 
 function loadSettings(): VoiceSettings {
   try {
@@ -95,6 +96,9 @@ export function VoiceAssistant() {
   const [level, setLevel] = useState(0);
   const [testError, setTestError] = useState<string | null>(null);
   const [systemAudio, setSystemAudio] = useState<SystemAudio | null>(null);
+  const [recording, setRecording] = useState(false);
+  const [recordUrl, setRecordUrl] = useState<string | null>(null);
+  const [trackInfo, setTrackInfo] = useState<Record<string, unknown> | null>(null);
 
   const recognitionRef = useRef<any>(null);
   const finalTextRef = useRef("");
@@ -103,6 +107,10 @@ export function VoiceAssistant() {
   const streamRef = useRef<MediaStream | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const rafRef = useRef<number | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const stopTimerRef = useRef<number | null>(null);
+  const recordUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     mutedRef.current = muted;
@@ -218,60 +226,163 @@ export function VoiceAssistant() {
     [speak],
   );
 
-  // ── Test du micro (niveau en direct) ───────────────────────────────────
-  const stopTest = useCallback(() => {
+  // ── Test du micro : niveau + enregistrement/ecoute ──────────────────────
+  const stopAll = useCallback(() => {
     if (rafRef.current !== null) {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     }
+    if (stopTimerRef.current !== null) {
+      window.clearTimeout(stopTimerRef.current);
+      stopTimerRef.current = null;
+    }
+    const recorder = recorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      try {
+        recorder.stop();
+      } catch {
+        /* ignore */
+      }
+    }
+    recorderRef.current = null;
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     void audioCtxRef.current?.close().catch(() => undefined);
     audioCtxRef.current = null;
     setLevel(0);
     setTesting(false);
+    setRecording(false);
   }, []);
 
+  const buildGraph = useCallback((stream: MediaStream) => {
+    const Ctx = (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext;
+    const ctx = new Ctx();
+    const source = ctx.createMediaStreamSource(stream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 512;
+    const dest = ctx.createMediaStreamDestination();
+    const channel = settingsRef.current.channel;
+    if (channel === "stereo") {
+      source.connect(analyser);
+      source.connect(dest);
+    } else {
+      const splitter = ctx.createChannelSplitter(2);
+      source.connect(splitter);
+      const index = channel === "left" ? 0 : 1;
+      splitter.connect(analyser, index);
+      splitter.connect(dest, index, 0);
+    }
+    return { ctx, analyser, dest };
+  }, []);
+
+  const openStream = useCallback(async () => {
+    const constraints: MediaStreamConstraints = {
+      audio: settingsRef.current.micId
+        ? { deviceId: { exact: settingsRef.current.micId } }
+        : true,
+    };
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    streamRef.current = stream;
+    const track = stream.getAudioTracks()[0];
+    const s: any = track?.getSettings ? track.getSettings() : {};
+    setTrackInfo({
+      appareil: track?.label || "(sans nom)",
+      canaux: s.channelCount ?? "-",
+      frequence: s.sampleRate ? `${s.sampleRate} Hz` : "-",
+      echo: s.echoCancellation === undefined ? "-" : s.echoCancellation ? "oui" : "non",
+      bruit: s.noiseSuppression === undefined ? "-" : s.noiseSuppression ? "oui" : "non",
+      gain: s.autoGainControl === undefined ? "-" : s.autoGainControl ? "oui" : "non",
+    });
+    const graph = buildGraph(stream);
+    audioCtxRef.current = graph.ctx;
+    setMicState("granted");
+    void refreshDevices();
+    const data = new Uint8Array(graph.analyser.frequencyBinCount);
+    const tick = () => {
+      graph.analyser.getByteTimeDomainData(data);
+      let sum = 0;
+      for (let i = 0; i < data.length; i++) {
+        const v = (data[i] - 128) / 128;
+        sum += v * v;
+      }
+      setLevel(Math.min(1, Math.sqrt(sum / data.length) * 4));
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    tick();
+    return graph;
+  }, [buildGraph, refreshDevices]);
+
   const startTest = useCallback(async () => {
-    stopTest();
+    stopAll();
     setTestError(null);
     try {
-      const constraints: MediaStreamConstraints = {
-        audio: settings.micId ? { deviceId: { exact: settings.micId } } : true,
-      };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
-      const Ctx = (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext;
-      const ctx = new Ctx();
-      audioCtxRef.current = ctx;
-      const source = ctx.createMediaStreamSource(stream);
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 512;
-      source.connect(analyser);
-      const data = new Uint8Array(analyser.frequencyBinCount);
+      await openStream();
       setTesting(true);
-      setMicState("granted");
-      void refreshDevices();
-      const tick = () => {
-        analyser.getByteTimeDomainData(data);
-        let sum = 0;
-        for (let i = 0; i < data.length; i++) {
-          const v = (data[i] - 128) / 128;
-          sum += v * v;
-        }
-        const rms = Math.sqrt(sum / data.length);
-        setLevel(Math.min(1, rms * 4));
-        rafRef.current = requestAnimationFrame(tick);
-      };
-      tick();
     } catch (err: any) {
-      setTesting(false);
       setTestError(`${err?.name || "Erreur"} : ${err?.message || "acces refuse"}`);
       if (err?.name === "NotAllowedError") setMicState("denied");
+      stopAll();
     }
-  }, [refreshDevices, settings.micId, stopTest]);
+  }, [openStream, stopAll]);
 
-  useEffect(() => () => stopTest(), [stopTest]);
+  const startRecording = useCallback(
+    async (seconds = 5) => {
+      stopAll();
+      setTestError(null);
+      if (recordUrlRef.current) {
+        URL.revokeObjectURL(recordUrlRef.current);
+        recordUrlRef.current = null;
+        setRecordUrl(null);
+      }
+      try {
+        const graph = await openStream();
+        const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+          ? "audio/webm;codecs=opus"
+          : undefined;
+        const recorder = new MediaRecorder(graph.dest.stream, mime ? { mimeType: mime } : undefined);
+        chunksRef.current = [];
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) chunksRef.current.push(e.data);
+        };
+        recorder.onstop = () => {
+          const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
+          chunksRef.current = [];
+          if (blob.size > 0) {
+            const url = URL.createObjectURL(blob);
+            recordUrlRef.current = url;
+            setRecordUrl(url);
+          }
+          stopAll();
+        };
+        recorderRef.current = recorder;
+        recorder.start(250);
+        setRecording(true);
+        setTesting(true);
+        stopTimerRef.current = window.setTimeout(() => {
+          if (recorder.state !== "inactive") recorder.stop();
+        }, Math.max(1, seconds) * 1000);
+      } catch (err: any) {
+        setTestError(`${err?.name || "Erreur"} : ${err?.message || "acces refuse"}`);
+        if (err?.name === "NotAllowedError") setMicState("denied");
+        stopAll();
+      }
+    },
+    [openStream, stopAll],
+  );
+
+  const stopRecording = useCallback(() => {
+    const recorder = recorderRef.current;
+    if (recorder && recorder.state !== "inactive") recorder.stop();
+    else stopAll();
+  }, [stopAll]);
+
+  useEffect(
+    () => () => {
+      stopAll();
+      if (recordUrlRef.current) URL.revokeObjectURL(recordUrlRef.current);
+    },
+    [stopAll],
+  );
 
   // ── Commandes ──────────────────────────────────────────────────────────
   const readProjectState = useCallback(async (rawName: string) => {
@@ -647,13 +758,35 @@ export function VoiceAssistant() {
                 </span>
               </label>
 
-              {/* Niveau */}
+              {/* Canal + test */}
+              <label style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                <span style={{ color: "var(--text-secondary, #9ca3af)" }}>Canal testé</span>
+                <select
+                  value={settings.channel}
+                  onChange={(e) => updateSettings({ channel: e.target.value as VoiceSettings["channel"] })}
+                  aria-label="Canal testé"
+                  style={{ background: "rgba(255,255,255,0.06)", color: "var(--text-primary, #fff)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "8px", padding: "6px 8px", fontSize: "0.78rem" }}
+                >
+                  <option value="stereo">Stéréo (gauche + droite)</option>
+                  <option value="left">Gauche (L)</option>
+                  <option value="right">Droite (R)</option>
+                </select>
+                <span style={{ color: "#6b7280", fontSize: "0.7rem" }}>
+                  Sur une interface multi-canaux, Windows expose souvent chaque paire comme un périphérique (IN 1-2, IN 3-4…).
+                </span>
+              </label>
+
               <div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px", gap: "6px" }}>
                   <span style={{ color: "var(--text-secondary, #9ca3af)" }}>Niveau du signal</span>
-                  <button style={smallBtn} onClick={() => (testing ? stopTest() : void startTest())}>
-                    {testing ? <><Square size={12} /> Stop</> : <><Play size={12} /> Tester</>}
-                  </button>
+                  <div style={{ display: "flex", gap: "6px" }}>
+                    <button style={smallBtn} onClick={() => (testing ? stopAll() : void startTest())}>
+                      {testing ? <><Square size={12} /> Stop</> : <><Play size={12} /> Tester</>}
+                    </button>
+                    <button style={smallBtn} onClick={() => (recording ? stopRecording() : void startRecording(5))}>
+                      {recording ? <><Square size={12} /> Arrêter</> : <><Mic size={12} /> Enregistrer 5 s</>}
+                    </button>
+                  </div>
                 </div>
                 <div style={{ height: "8px", borderRadius: "999px", background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
                   <div
@@ -665,6 +798,16 @@ export function VoiceAssistant() {
                     }}
                   />
                 </div>
+                {recordUrl && (
+                  <audio controls src={recordUrl} style={{ width: "100%", height: "32px", marginTop: "6px" }} />
+                )}
+                {trackInfo && (
+                  <div style={{ marginTop: "6px", fontSize: "0.68rem", color: "#6b7280", lineHeight: 1.5 }}>
+                    <div>Appareil : {String(trackInfo.appareil)}</div>
+                    <div>Canaux : {String(trackInfo.canaux)} · {String(trackInfo.frequence)}</div>
+                    <div>Écho : {String(trackInfo.echo)} · Bruit : {String(trackInfo.bruit)} · Gain auto : {String(trackInfo.gain)}</div>
+                  </div>
+                )}
               </div>
 
               {/* Langue */}
