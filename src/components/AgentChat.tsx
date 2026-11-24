@@ -10,6 +10,7 @@ import {
   X,
   Mic,
   Square,
+  Paperclip,
 } from "lucide-react";
 import { useChatStream } from "../hooks/useChatStream";
 import { useVoiceRecorder } from "./VoiceAssistant";
@@ -17,6 +18,58 @@ import { apiFetchJson } from "../lib/apiFetch";
 
 const AGENTS = ["main", "assistant", "research", "coder"];
 const API_BASE = "http://localhost:4000";
+
+// ── Pièces jointes ───────────────────────────────────────────────────────────
+// Fichiers texte lus côté client (contenu injecté dans le message envoyé).
+const TEXT_EXTENSIONS = new Set([
+  "txt",
+  "md",
+  "csv",
+  "json",
+  "js",
+  "ts",
+  "tsx",
+  "mjs",
+  "py",
+  "html",
+  "css",
+  "xml",
+  "yml",
+  "yaml",
+  "sh",
+  "log",
+  "sql",
+]);
+const MAX_TEXT_BYTES = 20 * 1024; // 20 Ko max par fichier texte (tronqué au-delà)
+const MAX_ATTACHED_FILES = 3; // 3 fichiers max par message
+// Upload binaire : POST /api/workspace/upload, scope "lia"
+// → enregistré sous <workspace>/uploads/lia/ (voir routes/workspace.mjs).
+const UPLOAD_LIA_DIR = "uploads/lia";
+
+/** Une pièce jointe prête à être injectée dans le message envoyé. */
+type AttachedFile =
+  | {
+      id: string;
+      name: string;
+      size: number;
+      kind: "text";
+      content: string;
+      truncated: boolean;
+    }
+  | {
+      id: string;
+      name: string;
+      size: number;
+      kind: "binary";
+      status: "uploading" | "uploaded" | "error";
+      uploadedPath?: string;
+      error?: string;
+    };
+
+let attachCounter = 0;
+const attachId = () => `file-${++attachCounter}-${Date.now()}`;
+const fileExt = (name: string) => name.split(".").pop()?.toLowerCase() ?? "";
+const sizeKo = (bytes: number) => `${Math.max(1, Math.round(bytes / 1024))} Ko`;
 
 export function AgentChat({ pageContext }: { pageContext?: string }) {
   const [open, setOpen] = useState(false);
@@ -28,6 +81,10 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
   const { messages, loading, send, clearMessages } = useChatStream();
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
+  const [dragOver, setDragOver] = useState(false);
+  const [fileNote, setFileNote] = useState<string | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -40,15 +97,66 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
     return () => window.clearTimeout(t);
   }, [voiceNote]);
 
+  // Idem pour les messages liés aux pièces jointes (upload, limites…).
+  useEffect(() => {
+    if (!fileNote) return;
+    const t = window.setTimeout(() => setFileNote(null), 6000);
+    return () => window.clearTimeout(t);
+  }, [fileNote]);
+
   // Refermer le panneau coupe tout enregistrement micro en cours.
   useEffect(() => {
     if (!open && voice.recording) void voice.stop();
   }, [open, voice.recording, voice.stop]);
 
+  // Un upload binaire est-il encore en vol ? (on attend avant d'envoyer)
+  const uploadPending = attachedFiles.some(
+    (f) => f.kind === "binary" && f.status === "uploading",
+  );
+  // Envoi possible dès qu'il y a du texte OU au moins une pièce jointe valide.
+  const canSend =
+    (input.trim().length > 0 || attachedFiles.length > 0) &&
+    !loading &&
+    !uploadPending;
+
   const sendMessage = async () => {
-    const text = input.trim();
-    if (!text || loading) return;
+    const typed = input.trim();
+    if (loading) return;
+    if (uploadPending) {
+      setFileNote(
+        "Enregistrement des fichiers en cours, réessaie dans un instant.",
+      );
+      return;
+    }
+    if (!typed && attachedFiles.length === 0) return;
+
+    // Blocs pièces jointes, AVANT le texte tapé par l'utilisateur.
+    const blocks: string[] = [];
+    for (const f of attachedFiles) {
+      if (f.kind === "text") {
+        blocks.push(
+          `📎 Fichier joint : ${f.name}\n\`\`\`\n${f.content}${f.truncated ? "\n…tronqué" : ""}\n\`\`\``,
+        );
+      } else if (
+        f.kind === "binary" &&
+        f.status === "uploaded" &&
+        f.uploadedPath
+      ) {
+        blocks.push(
+          `📎 Fichier joint : ${f.name} (binaire, ${sizeKo(f.size)} Ko, enregistré dans le workspace : ${f.uploadedPath})`,
+        );
+      }
+    }
+    if (typed) blocks.push(typed);
+    const text = blocks.join("\n\n");
+    if (!text.trim()) {
+      // Par ex. un seul binaire dont l'upload a échoué et aucun texte tapé.
+      setFileNote("Aucune pièce jointe utilisable — réessaie de l'ajouter.");
+      return;
+    }
+
     setInput("");
+    setAttachedFiles([]);
     await send({ text, agent, preInstructions: pageContext });
     inputRef.current?.focus();
   };
@@ -111,6 +219,110 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
     await voice.start();
   };
 
+  // ── Pièces jointes ──────────────────────────────────────────────────────────
+
+  /** Retire une pièce jointe (bouton ✕ du chip). */
+  const removeAttachedFile = (id: string) =>
+    setAttachedFiles((prev) => prev.filter((f) => f.id !== id));
+
+  /**
+   * Fichier binaire (pdf, image…) → upload immédiat vers le workspace de Lia
+   * via POST /api/workspace/upload (multipart, scope "lia").
+   */
+  const uploadBinary = async (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append("scope", "lia");
+    formData.append("file", file, file.name);
+    const { data, error } = await apiFetchJson<{
+      ok?: boolean;
+      uploaded?: { name?: string; size?: number; ok?: boolean; error?: string }[];
+    }>(`${API_BASE}/api/workspace/upload`, { method: "POST", body: formData });
+
+    const entry = data?.uploaded?.[0];
+    if (error || !data?.ok || !entry?.ok || !entry.name) {
+      const reason = entry?.error ?? error ?? "réponse invalide";
+      setAttachedFiles((prev) =>
+        prev.map((f): AttachedFile =>
+          f.id === id && f.kind === "binary"
+            ? { ...f, status: "error", error: reason }
+            : f,
+        ),
+      );
+      setFileNote(`« ${file.name} » non enregistré : ${reason}`);
+      return;
+    }
+    // Le serveur renvoie le nom sanitisé ; le répertoire cible est uploads/lia/.
+    setAttachedFiles((prev) =>
+      prev.map((f): AttachedFile =>
+        f.id === id && f.kind === "binary"
+          ? {
+              ...f,
+              status: "uploaded",
+              uploadedPath: `${UPLOAD_LIA_DIR}/${entry.name}`,
+            }
+          : f,
+      ),
+    );
+  };
+
+  /** Sélection ou dépôt de fichiers : texte lu ici, binaire uploadé vers Lia. */
+  const addFiles = async (list: FileList | File[]) => {
+    const files = Array.from(list);
+    if (files.length === 0) return;
+    setFileNote(null);
+
+    const slots = MAX_ATTACHED_FILES - attachedFiles.length;
+    if (slots <= 0) {
+      setFileNote(`Maximum ${MAX_ATTACHED_FILES} pièces jointes par message.`);
+      return;
+    }
+    if (files.length > slots) {
+      setFileNote(
+        `Seuls les ${slots} premier(s) fichier(s) sont retenus (max ${MAX_ATTACHED_FILES}).`,
+      );
+    }
+
+    for (const file of files.slice(0, slots)) {
+      if (TEXT_EXTENSIONS.has(fileExt(file.name))) {
+        // Fichier texte : lecture côté client, tronquée à 20 Ko.
+        try {
+          const truncated = file.size > MAX_TEXT_BYTES;
+          const raw = await (
+            truncated ? file.slice(0, MAX_TEXT_BYTES) : file
+          ).text();
+          setAttachedFiles((prev) => [
+            ...prev,
+            {
+              id: attachId(),
+              name: file.name,
+              size: file.size,
+              kind: "text",
+              content: raw,
+              truncated,
+            },
+          ]);
+        } catch {
+          setFileNote(`Impossible de lire « ${file.name} ».`);
+        }
+      } else {
+        // Fichier binaire : upload immédiat ; le message final
+        // mentionnera le chemin enregistré dans le workspace.
+        const id = attachId();
+        setAttachedFiles((prev) => [
+          ...prev,
+          {
+            id,
+            name: file.name,
+            size: file.size,
+            kind: "binary",
+            status: "uploading",
+          },
+        ]);
+        void uploadBinary(id, file);
+      }
+    }
+  };
+
   return (
     <>
       {/* ── Floating bubble ────────────────────────────────────────────── */}
@@ -171,6 +383,24 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
       {/* ── Chat panel ─────────────────────────────────────────────────── */}
       {open && (
         <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "copy";
+            setDragOver(true);
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            // Ne désurligne que si on quitte réellement le panneau
+            // (et pas juste un de ses enfants).
+            const next = e.relatedTarget as Node | null;
+            if (next && e.currentTarget.contains(next)) return;
+            setDragOver(false);
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragOver(false);
+            void addFiles(e.dataTransfer.files);
+          }}
           style={{
             position: "fixed",
             bottom: 92,
@@ -178,16 +408,43 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
             zIndex: 1000,
             width: 400,
             height: 560,
-            background: "var(--bg-surface)",
-            border: "1px solid var(--border-subtle)",
+            background: dragOver ? "var(--bg-card)" : "var(--bg-surface)",
+            border: dragOver
+              ? "1px dashed var(--brand-accent)"
+              : "1px solid var(--border-subtle)",
             borderRadius: 18,
             display: "flex",
             flexDirection: "column",
-            boxShadow: "0 12px 48px rgba(0,0,0,0.45)",
+            boxShadow: dragOver
+              ? "0 12px 48px rgba(0,0,0,0.45), inset 0 0 0 2px rgba(139,92,246,0.2)"
+              : "0 12px 48px rgba(0,0,0,0.45)",
             animation: "chatSlideUp 0.2s ease",
             overflow: "hidden",
           }}
         >
+          {/* Overlay pendant le survol d'un dépôt de fichiers */}
+          {dragOver && (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                zIndex: 20,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                background: "rgba(139,92,246,0.1)",
+                borderRadius: 18,
+                pointerEvents: "none",
+                color: "var(--brand-accent)",
+                fontSize: "14px",
+                fontWeight: 700,
+              }}
+            >
+              <Paperclip size={16} />
+              Dépose tes fichiers ici
+            </div>
+          )}
           {/* Header */}
           <div
             style={{
@@ -468,7 +725,105 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
                 )}
               </div>
             )}
+            {/* Message discret lié aux pièces jointes (même style que le micro) */}
+            {fileNote && (
+              <div
+                style={{
+                  fontSize: "12px",
+                  lineHeight: 1.4,
+                  color: "var(--status-error)",
+                }}
+              >
+                {fileNote}
+              </div>
+            )}
+            {/* Chips des pièces jointes : nom + taille + ✕ pour retirer */}
+            {attachedFiles.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {attachedFiles.map((f) => (
+                  <div
+                    key={f.id}
+                    title={
+                      f.kind === "binary" && f.status === "error"
+                        ? `Erreur : ${f.error}`
+                        : f.name
+                    }
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      padding: "4px 8px",
+                      borderRadius: 8,
+                      fontSize: "12px",
+                      background: "var(--bg-glass)",
+                      border: `1px solid ${
+                        f.kind === "binary" && f.status === "error"
+                          ? "var(--status-error)"
+                          : "var(--border-subtle)"
+                      }`,
+                      color:
+                        f.kind === "binary" && f.status === "error"
+                          ? "var(--status-error)"
+                          : "var(--text-primary)",
+                      maxWidth: "100%",
+                    }}
+                  >
+                    {f.kind === "binary" && f.status === "uploading" && (
+                      <Loader2
+                        size={11}
+                        style={{
+                          animation: "spin 1s linear infinite",
+                          flexShrink: 0,
+                        }}
+                      />
+                    )}
+                    <span
+                      style={{
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        maxWidth: 170,
+                      }}
+                    >
+                      {f.name}
+                    </span>
+                    <span
+                      style={{ color: "var(--text-muted)", flexShrink: 0 }}
+                    >
+                      {sizeKo(f.size)}
+                    </span>
+                    <button
+                      onClick={() => removeAttachedFile(f.id)}
+                      title="Retirer cette pièce jointe"
+                      style={{
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        padding: 0,
+                        display: "flex",
+                        color: "var(--text-muted)",
+                        flexShrink: 0,
+                        lineHeight: 1,
+                      }}
+                    >
+                      <X size={11} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
             <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+              {/* Sélecteur de fichiers (ouvert par le bouton 📎) */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                hidden
+                onChange={(e) => {
+                  void addFiles(e.target.files ?? []);
+                  e.target.value = ""; // permet de rechoisir le même fichier
+                }}
+              />
               <textarea
                 ref={inputRef}
                 value={input}
@@ -499,6 +854,27 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
                   (e.target.style.borderColor = "var(--border-subtle)")
                 }
               />
+              {/* Bouton pièce jointe (📎) — à côté du micro */}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                title="Joindre des fichiers (texte ou binaire) — ou glisse-les sur le chat"
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 10,
+                  border: "none",
+                  cursor: "pointer",
+                  background: "rgba(255,255,255,0.06)",
+                  color: "var(--text-secondary)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  transition: "all 0.2s",
+                }}
+              >
+                <Paperclip size={15} />
+              </button>
               <button
                 onClick={handleMic}
                 disabled={voice.starting || transcribing}
@@ -541,18 +917,17 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
               </button>
               <button
                 onClick={sendMessage}
-                disabled={!input.trim() || loading}
+                disabled={!canSend}
                 style={{
                   width: 38,
                   height: 38,
                   borderRadius: 10,
                   border: "none",
-                  cursor: input.trim() && !loading ? "pointer" : "not-allowed",
-                  background:
-                    input.trim() && !loading
-                      ? "var(--brand-accent)"
-                      : "rgba(255,255,255,0.06)",
-                  color: input.trim() && !loading ? "#fff" : "var(--text-muted)",
+                  cursor: canSend ? "pointer" : "not-allowed",
+                  background: canSend
+                    ? "var(--brand-accent)"
+                    : "rgba(255,255,255,0.06)",
+                  color: canSend ? "#fff" : "var(--text-muted)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
