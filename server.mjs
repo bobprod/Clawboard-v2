@@ -30,6 +30,11 @@ import { checkRateLimit } from "./src/lib/rateLimit.mjs";
 import { createLogger } from "./src/lib/logger.mjs";
 import { generateText } from "./src/lib/llm.mjs";
 
+// Racine du projet ClawBoard (dossier de server.mjs). Utilisée par les outils
+// exec_command (workdir par défaut) et send_message (settings.local.json).
+// NOTE : corrige un bug préexistant — repoDir était utilisé sans être déclaré.
+const repoDir = dirname(fileURLToPath(import.meta.url));
+
 // ─── Modular Router ───────────────────────────────────────────────────────────
 import { Router } from "./routes/router.mjs";
 import { register as registerHealthRoutes } from "./routes/health.mjs";
@@ -1154,6 +1159,9 @@ OUTILS DISPONIBLES (utiliser sans attendre) :
 • exec_command — exécuter des commandes shell (sécurisé, allowlist NemoClaw)
 • search_memory — chercher dans la mémoire agent (MEMORY.md, notes)
 • send_message — envoyer un message via canal (telegram, discord, slack)
+• create_project / list_projects — gérer les projets ClawBoard
+• git_log / git_status — historique et état git du hub (LECTURE SEULE)
+• create_task accepte des « instructions » détaillées pour l'agent exécutant
 
 SÉCURITÉ NEMOCLAW :
 - Les outils exec_command et write_file sont sandboxés (chemins autorisés uniquement)
@@ -1193,11 +1201,17 @@ const LIA_TOOLS = [
   },
   {
     name: "create_task",
-    description: "Crée une nouvelle tâche.",
+    description:
+      "Crée une nouvelle tâche (statut initial : planifiée). Accepte des instructions détaillées optionnelles pour l'agent exécutant. Renvoie {ok, id}.",
     input_schema: {
       type: "object",
       properties: {
         name: { type: "string" },
+        instructions: {
+          type: "string",
+          description:
+            "Instructions détaillées pour l'agent qui exécutera la tâche",
+        },
         modeleId: { type: "string" },
         agent: { type: "string" },
         skillName: { type: "string" },
@@ -1453,7 +1467,99 @@ const LIA_TOOLS = [
       required: ["channel", "content"],
     },
   },
+  // ── Projets & git (lecture seule) — boucle d'outils OpenCode (C4+C2) ───────
+  {
+    name: "create_project",
+    description:
+      "Crée un nouveau projet ClawBoard (regroupe des tâches). Renvoie {ok, id}.",
+    input_schema: {
+      type: "object",
+      properties: {
+        nom: { type: "string", description: "Nom du projet" },
+        description: { type: "string", description: "Description (optionnel)" },
+        couleur: {
+          type: "string",
+          description: "Couleur hex (optionnel, défaut #8b5cf6)",
+        },
+      },
+      required: ["nom"],
+    },
+  },
+  {
+    name: "list_projects",
+    description:
+      "Liste les projets ClawBoard (id, nom, statut), plus récemment mis à jour en premier.",
+    input_schema: { type: "object", properties: {}, required: [] },
+  },
+  {
+    name: "git_log",
+    description:
+      "Liste les derniers commits du dépôt git configuré (CLAWBOARD_GIT_REPO — hub central par défaut), format --oneline. LECTURE SEULE.",
+    input_schema: {
+      type: "object",
+      properties: {
+        limit: {
+          type: "number",
+          description: "Nombre de commits (1 à 25, défaut 10)",
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "git_status",
+    description:
+      "État git du dépôt configuré : fichiers modifiés/non suivis + branche courante. LECTURE SEULE.",
+    input_schema: { type: "object", properties: {}, required: [] },
+  },
 ];
+
+// ── Outils git (LECTURE SEULE) — même résolution de dépôt que routes/tools.mjs ──
+const LIA_GIT_REPO =
+  process.env.CLAWBOARD_GIT_REPO ||
+  "C:\\Users\\BOB\\Desktop\\project dev\\central project";
+
+// Exécute `git -C <LIA_GIT_REPO> <args>` via spawn SANS shell (aucune injection
+// possible). Lecture seule : seules les sous-commandes log/status/rev-parse sont
+// utilisées par les outils git_log/git_status ci-dessous.
+function liaGit(args) {
+  return new Promise((resolve) => {
+    try {
+      const child = spawn("git", ["-C", LIA_GIT_REPO, ...args], {
+        windowsHide: true,
+      });
+      let out = "";
+      let errOut = "";
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        child.kill();
+        resolve({ error: "git : timeout après 15s." });
+      }, 15000);
+      const finish = (r) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(r);
+      };
+      child.stdout?.on("data", (d) => {
+        if (out.length < 8000) out += d.toString();
+      });
+      child.stderr?.on("data", (d) => {
+        if (errOut.length < 2000) errOut += d.toString();
+      });
+      child.on("error", (e) =>
+        finish({ error: `git indisponible : ${e.message}` }),
+      );
+      child.on("close", (code) =>
+        finish({ code, stdout: out.trim(), stderr: errOut.trim() }),
+      );
+    } catch (e) {
+      resolve({ error: `Erreur git : ${e.message}` });
+    }
+  });
+}
 
 async function executeTool(name, input, permissions) {
   if (permissions[name] === false) {
@@ -1466,7 +1572,8 @@ async function executeTool(name, input, permissions) {
     case "list_tasks": {
       const tasks = await getAllTasks();
       return {
-        tasks: tasks.map((t) => ({
+        // 15 plus récentes (getAllTasks est déjà triée par created_at DESC)
+        tasks: tasks.slice(0, 15).map((t) => ({
           id: t.id,
           name: t.name,
           status: t.status,
@@ -1474,6 +1581,7 @@ async function executeTool(name, input, permissions) {
           cost: t.cost,
           tokensUsed: t.tokensUsed,
           scheduledAt: t.scheduledAt,
+          createdAt: t.createdAt,
         })),
       };
     }
@@ -1491,17 +1599,20 @@ async function executeTool(name, input, permissions) {
       return t || { error: `Tâche "${input.taskId}" introuvable.` };
     }
     case "create_task": {
+      if (!input.name || !String(input.name).trim())
+        return { error: "Le paramètre « name » est requis." };
       const id = `tsk_${Date.now()}`;
       const now = new Date().toISOString();
       await pool.query(
-        `INSERT INTO tasks (id, titre, modele_id, statut, agent, skill_name, scheduled_at, created_at, updated_at, cout, tokens_in, tokens_out)
-         VALUES ($1,$2,$3,'planned',$4,$5,$6,$7,$7,0,0,0)`,
+        `INSERT INTO tasks (id, titre, modele_id, statut, agent, skill_name, instructions, scheduled_at, created_at, updated_at, cout, tokens_in, tokens_out)
+         VALUES ($1,$2,$3,'planned',$4,$5,$6,$7,$8,$8,0,0,0)`,
         [
           id,
           input.name,
           input.modeleId || null,
           input.agent || "main",
           input.skillName || null,
+          input.instructions || null,
           input.scheduledAt || now,
           now,
         ],
@@ -1511,7 +1622,11 @@ async function executeTool(name, input, permissions) {
         [id, now],
       );
       await broadcastTasks();
-      return { created: { id, name: input.name, status: "planned" } };
+      return {
+        ok: true,
+        id,
+        created: { id, name: input.name, status: "planned" },
+      };
     }
     case "start_task": {
       const task = await getTaskById(input.taskId);
@@ -2239,6 +2354,74 @@ async function executeTool(name, input, permissions) {
       } catch (e) {
         return { error: `Erreur send_message: ${e.message}` };
       }
+    }
+
+    // ── Projets & git (lecture seule) — boucle d'outils OpenCode (C4+C2) ──────
+
+    case "create_project": {
+      try {
+        const nom = String(input.nom || input.name || "").trim().slice(0, 200);
+        if (!nom) return { error: "Le paramètre « nom » est requis." };
+        const id = `prj_${Date.now()}`;
+        await pool.query(
+          `INSERT INTO projects (id, nom, description, couleur, statut)
+           VALUES ($1,$2,$3,$4,'actif')`,
+          [
+            id,
+            nom,
+            input.description || null,
+            input.couleur || input.color || "#8b5cf6",
+          ],
+        );
+        return { ok: true, id, nom };
+      } catch (e) {
+        return { error: `Erreur create_project : ${e.message}` };
+      }
+    }
+
+    case "list_projects": {
+      try {
+        const { rows } = await pool.query(
+          `SELECT * FROM projects ORDER BY updated_at DESC`,
+        );
+        return {
+          projects: rows.map((r) => ({
+            id: r.id,
+            nom: r.nom,
+            statut: r.statut,
+          })),
+        };
+      } catch (e) {
+        return { error: `Erreur list_projects : ${e.message}` };
+      }
+    }
+
+    case "git_log": {
+      const parsed = parseInt(input.limit, 10);
+      const limit = Math.min(
+        Math.max(Number.isFinite(parsed) ? parsed : 10, 1),
+        25,
+      );
+      const r = await liaGit(["log", "--oneline", "-n", String(limit)]);
+      if (r.error) return { error: r.error };
+      if (r.code !== 0)
+        return {
+          error: `git log a échoué : ${r.stderr || `code ${r.code}`}`,
+        };
+      return { repo: LIA_GIT_REPO, limit, log: r.stdout || "(aucun commit)" };
+    }
+
+    case "git_status": {
+      const st = await liaGit(["status", "--short"]);
+      if (st.error) return { error: st.error };
+      const br = await liaGit(["rev-parse", "--abbrev-ref", "HEAD"]);
+      if (br.error) return { error: br.error };
+      return {
+        repo: LIA_GIT_REPO,
+        branch: br.stdout || "(branche inconnue)",
+        status: st.stdout || "working tree clean — rien à commiter",
+        clean: !st.stdout,
+      };
     }
 
     default:
@@ -3368,6 +3551,176 @@ function openCodeMessages(messages) {
   }));
 }
 
+// ── Boucle d'outils OpenAI pour OpenCode (C4 : Lia agit vraiment) ───────────────
+
+// Convertit les outils Lia ({name, description, input_schema}) au format
+// OpenAI tools : {type:"function", function:{name, description, parameters}}.
+function toOpenAITools(tools) {
+  return tools.map((t) => ({
+    type: "function",
+    function: {
+      name: t.name,
+      description: t.description,
+      parameters: t.input_schema,
+    },
+  }));
+}
+
+// Mappe l'historique en préservant tool_calls / tool_call_id (requis par l'API
+// OpenAI pour les rounds d'outils — cf. callNvidia).
+function openCodeLoopMessages(messages) {
+  return messages.map((m) => {
+    const mapped = {
+      role: m.role,
+      content: Array.isArray(m.content)
+        ? m.content.find((c) => c.type === "text")?.text || ""
+        : m.content,
+    };
+    if (m.role === "assistant" && m.tool_calls?.length) {
+      mapped.tool_calls = m.tool_calls;
+      if (!mapped.content) mapped.content = null;
+    }
+    if (m.role === "tool" && m.tool_call_id) {
+      mapped.tool_call_id = m.tool_call_id;
+      if (m.name) mapped.name = m.name;
+    }
+    return mapped;
+  });
+}
+
+// Résumé formaté des actions effectuées (fallback si le modèle ne répond plus).
+function summarizeLiaToolCalls(allToolCalls, errNote) {
+  const lines = allToolCalls.map((tc) => {
+    const label = tc.tool.replace(/_/g, " ");
+    const str =
+      typeof tc.result === "object"
+        ? JSON.stringify(tc.result)
+        : String(tc.result);
+    const preview = str.length > 200 ? str.slice(0, 200) + "…" : str;
+    return `- **${label}** : ${preview}`;
+  });
+  let msg = `✅ **${allToolCalls.length} action(s) effectuée(s) :**\n\n${lines.join("\n")}`;
+  if (errNote) msg += `\n\n⚠️ ${errNote}`;
+  return msg;
+}
+
+// Un round non streamé de la boucle : POST /chat/completions avec tools.
+// Renvoie {message, _toolCalls} si le modèle demande des outils, sinon {message}.
+async function callOpenCodeRound(messages, model, openaiTools) {
+  const key = openCodeKey();
+  if (!key) return null;
+  const body = {
+    model: toOpenCodeModel(model),
+    messages: [
+      { role: "system", content: LIA_SYSTEM },
+      ...openCodeLoopMessages(messages),
+    ],
+    max_tokens: 1500,
+    temperature: 0.7,
+    stream: false,
+  };
+  if (openaiTools.length) {
+    body.tools = openaiTools;
+    body.tool_choice = "auto";
+  }
+  const resp = await fetch(
+    `${process.env.LLM_BASE_URL || "https://opencode.ai/inference/go/v1"}/chat/completions`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+        "x-opencode-session": "clawboard-lia",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(60000),
+    },
+  );
+  if (!resp.ok) {
+    const e = await resp.json().catch(() => ({}));
+    throw new Error(e.error?.message || `OpenCode HTTP ${resp.status}`);
+  }
+  const data = await resp.json();
+  const msg = data.choices?.[0]?.message;
+  if (msg?.tool_calls?.length) {
+    return { message: null, _toolCalls: msg.tool_calls };
+  }
+  return { message: msg?.content || "" };
+}
+
+// Boucle d'outils OpenAI (jusqu'à 5 rounds). opts.tools === false → single-pass.
+// Renvoie {message, toolCalls} (cumul) ou null si aucune clé OpenCode.
+async function callOpenCodeLoop(messages, model, permissions, opts = {}) {
+  const key = openCodeKey();
+  if (!key) return null;
+  const tools =
+    opts.tools === false
+      ? []
+      : LIA_TOOLS.filter((t) => permissions?.[t.name] !== false);
+  const openaiTools = toOpenAITools(tools);
+  let currentMsgs = sanitizeHistory(applySliding(messages));
+  const allToolCalls = [];
+  for (let round = 0; round < 5; round++) {
+    let r;
+    try {
+      r = await callOpenCodeRound(currentMsgs, model, openaiTools);
+    } catch (e) {
+      if (allToolCalls.length) {
+        return {
+          message: summarizeLiaToolCalls(allToolCalls, `Erreur finale : ${e.message}`),
+          toolCalls: allToolCalls,
+        };
+      }
+      return { message: `❌ Erreur OpenCode : ${e.message}`, toolCalls: [] };
+    }
+    if (!r || !r._toolCalls) {
+      // Le modèle ne demande plus d'outils → réponse finale.
+      let msg = (r?.message || "").trim();
+      if (!msg && allToolCalls.length) msg = summarizeLiaToolCalls(allToolCalls);
+      if (!msg) msg = "⚠️ Le modèle n'a pas pu répondre. Reformulez ou relancez la conversation.";
+      return { message: msg, toolCalls: allToolCalls };
+    }
+    // Exécute chaque outil — une erreur d'outil devient un résultat d'erreur,
+    // la boucle continue (jamais de crash sur un outil individuel).
+    const toolResultMsgs = [];
+    for (const tc of r._toolCalls) {
+      const fnName = tc.function?.name;
+      let fnInput = {};
+      try {
+        fnInput = JSON.parse(tc.function?.arguments || "{}");
+      } catch {
+        fnInput = {};
+      }
+      let result;
+      try {
+        result = await executeTool(fnName, fnInput, permissions || {});
+      } catch (e) {
+        result = { error: `Erreur outil ${fnName} : ${e.message}` };
+      }
+      const trimmed = trimToolResult(result, 1500);
+      allToolCalls.push({ tool: fnName, input: fnInput, result });
+      toolResultMsgs.push({
+        role: "tool",
+        tool_call_id: tc.id,
+        name: fnName,
+        content: JSON.stringify(trimmed),
+      });
+    }
+    currentMsgs = [
+      ...currentMsgs,
+      { role: "assistant", tool_calls: r._toolCalls, content: null },
+      ...toolResultMsgs,
+    ];
+  }
+  // 5 rounds atteints → résumé des actions effectuées.
+  return {
+    message: allToolCalls.length
+      ? summarizeLiaToolCalls(allToolCalls, "Limite de 5 rounds atteinte.")
+      : "✅ Actions effectuées.",
+    toolCalls: allToolCalls,
+  };
+}
+
 async function callOpenCode(messages, model) {
   const key = openCodeKey();
   if (!key) return null;
@@ -3381,45 +3734,96 @@ async function callOpenCode(messages, model) {
   return { message: r.text, toolCalls: [] };
 }
 
-async function streamOpenCode(messages, model, res) {
+// Streaming OpenCode AVEC boucle d'outils (C4) :
+// 1. rounds d'outils non streamés (max 5) — Lia exécute réellement les actions ;
+// 2. quand un round ne demande plus d'outils, la réponse finale est streamée
+//    (stream: true + pipeOpenAIStream) SANS tools → texte garanti ;
+// 3. renvoie {toolCalls} (collectés) ou false si aucune clé.
+async function streamOpenCode(messages, model, permissions, res) {
   const key = openCodeKey();
   if (!key) return false;
-  const resp = await fetch(
-    `${process.env.LLM_BASE_URL || "https://opencode.ai/inference/go/v1"}/chat/completions`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${key}`,
-        "x-opencode-session": "clawboard-lia",
-        Accept: "text/event-stream",
-      },
-      body: JSON.stringify({
-        model: toOpenCodeModel(model),
-        messages: [
-          { role: "system", content: LIA_SYSTEM },
-          ...openCodeMessages(messages),
-        ],
-        max_tokens: 1500,
-        temperature: 0.7,
-        stream: true,
-      }),
-      signal: AbortSignal.timeout(60000),
-    },
+  const toolsToSend = LIA_TOOLS.filter(
+    (t) => permissions?.[t.name] !== false,
   );
-  if (!resp.ok) {
-    const e = await resp.json().catch(() => ({}));
-    await simulateStream(
-      `❌ Erreur OpenCode : ${e.error?.message || resp.status}`,
-      res,
+  const openaiTools = toOpenAITools(toolsToSend);
+  let currentMsgs = sanitizeHistory(applySliding(messages));
+  const allToolCalls = [];
+  try {
+    // Étape 1 — rounds d'outils non streamés
+    for (let round = 0; round < 5; round++) {
+      const r = await callOpenCodeRound(currentMsgs, model, openaiTools);
+      if (!r || !r._toolCalls) break; // plus d'outils demandés → réponse finale
+      const toolResultMsgs = [];
+      for (const tc of r._toolCalls) {
+        const fnName = tc.function?.name;
+        let fnInput = {};
+        try {
+          fnInput = JSON.parse(tc.function?.arguments || "{}");
+        } catch {
+          fnInput = {};
+        }
+        let result;
+        try {
+          result = await executeTool(fnName, fnInput, permissions || {});
+        } catch (e) {
+          result = { error: `Erreur outil ${fnName} : ${e.message}` };
+        }
+        const trimmed = trimToolResult(result, 1500);
+        allToolCalls.push({ tool: fnName, input: fnInput, result });
+        toolResultMsgs.push({
+          role: "tool",
+          tool_call_id: tc.id,
+          name: fnName,
+          content: JSON.stringify(trimmed),
+        });
+      }
+      currentMsgs = [
+        ...currentMsgs,
+        { role: "assistant", tool_calls: r._toolCalls, content: null },
+        ...toolResultMsgs,
+      ];
+    }
+    // Étape 2 — stream de la réponse finale (sans tools)
+    const resp = await fetch(
+      `${process.env.LLM_BASE_URL || "https://opencode.ai/inference/go/v1"}/chat/completions`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${key}`,
+          "x-opencode-session": "clawboard-lia",
+          Accept: "text/event-stream",
+        },
+        body: JSON.stringify({
+          model: toOpenCodeModel(model),
+          messages: [
+            { role: "system", content: LIA_SYSTEM },
+            ...openCodeLoopMessages(currentMsgs),
+          ],
+          max_tokens: 1500,
+          temperature: 0.7,
+          stream: true,
+        }),
+        signal: AbortSignal.timeout(60000),
+      },
     );
-    return true;
+    if (!resp.ok) {
+      const e = await resp.json().catch(() => ({}));
+      await simulateStream(
+        `❌ Erreur OpenCode : ${e.error?.message || resp.status}`,
+        res,
+      );
+      return { toolCalls: allToolCalls };
+    }
+    await pipeOpenAIStream(resp, res);
+    return { toolCalls: allToolCalls };
+  } catch (e) {
+    await simulateStream(`❌ Erreur OpenCode : ${e.message}`, res);
+    return { toolCalls: allToolCalls };
   }
-  await pipeOpenAIStream(resp, res);
-  return true;
 }
 
-async function runAgenticLoop(messages, model, permissions) {
+async function runAgenticLoop(messages, model, permissions, opts = {}) {
   try {
     if (model.startsWith("ollama/")) return await callOllama(messages, model);
     const NVIDIA_PREFIXES = [
@@ -3732,12 +4136,14 @@ async function runAgenticLoop(messages, model, permissions) {
       );
     }
     // OpenCode (Go/Zen) — provider explicite via préfixe "opencode/"
+    // Boucle d'outils OpenAI (C4) — cf. callOpenCodeLoop. opts.tools === false
+    // garde l'appel en single-pass (utilisé par generatePlan).
     if (
       model.startsWith("opencode/") ||
       model.startsWith("opencode-go/") ||
       model.startsWith("opencode-zen/")
     ) {
-      const r = await callOpenCode(slim, model);
+      const r = await callOpenCodeLoop(slim, model, permissions, opts);
       return (
         r || {
           message: `❌ Clé OpenCode non configurée. Ajoutez-la dans **Paramètres → Clés API** (provider : opencode) ou via OPENCODE_API_KEY.`,
@@ -3747,9 +4153,14 @@ async function runAgenticLoop(messages, model, permissions) {
     }
     const anthropicResult = await callAnthropic(slim, model, permissions);
     if (anthropicResult) return anthropicResult;
-    // Fallback OpenCode si clé présente (modèle texte pas cher)
+    // Fallback OpenCode si clé présente (modèle texte pas cher) — boucle d'outils
     if (openCodeKey()) {
-      const r = await callOpenCode(slim, "deepseek-v4.1-flash");
+      const r = await callOpenCodeLoop(
+        slim,
+        "deepseek-v4.1-flash",
+        permissions,
+        opts,
+      );
       if (r) return r;
     }
     return await smartMock(messages, permissions);

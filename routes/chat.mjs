@@ -46,7 +46,9 @@ async function generatePlan(userMessage, ctx) {
       { role: "system", content: PLAN_SYSTEM },
       { role: "user", content: userMessage },
     ];
-    const result = await runAgenticLoop(planMessages, "claude-sonnet-4-6", {});
+    const result = await runAgenticLoop(planMessages, "claude-sonnet-4-6", {}, {
+      tools: false, // le plan reste single-pass — PAS de boucle d'outils
+    });
     const text = result?.message || "";
     // Try to parse JSON from response
     const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -543,10 +545,20 @@ export function register(router, ctx) {
             model.startsWith("opencode-go/") ||
             model.startsWith("opencode-zen/")
           ) {
-            const ok = await streamOpenCode(messages, model, res);
-            if (ok) {
+            // streamOpenCode renvoie {toolCalls} (actions réellement exécutées
+            // par la boucle d'outils OpenAI) ou false si aucune clé.
+            const oc = await streamOpenCode(
+              messages,
+              model,
+              permissions,
+              res,
+            );
+            if (oc) {
               res.write(
-                `data: ${JSON.stringify({ done: true, toolCalls: [] })}\n\n`,
+                `data: ${JSON.stringify({
+                  done: true,
+                  toolCalls: oc.toolCalls || [],
+                })}\n\n`,
               );
             } else {
               const result = await runAgenticLoop(messages, model, permissions);
