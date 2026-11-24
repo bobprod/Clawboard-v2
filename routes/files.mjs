@@ -9,7 +9,8 @@ import { promisify } from "util";
 
 const execFileAsync = promisify(execFile);
 
-const WORKSPACE_ROOT = join(homedir(), ".openclaw", "workspace");
+const WORKSPACE_ROOT =
+  process.env.CLAWBOARD_WORKSPACE_ROOT || join(homedir(), ".openclaw", "workspace");
 
 const ALLOWED_READ_EXT = new Set([
   ".md", ".txt", ".json", ".yaml", ".yml", ".csv", ".pdf",

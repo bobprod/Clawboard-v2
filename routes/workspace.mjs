@@ -6,7 +6,8 @@ import { join, resolve, extname, basename } from "path";
 import { homedir } from "os";
 import { existsSync } from "fs";
 
-const WORKSPACE_ROOT = join(homedir(), ".openclaw", "workspace");
+const WORKSPACE_ROOT =
+  process.env.CLAWBOARD_WORKSPACE_ROOT || join(homedir(), ".openclaw", "workspace");
 const UPLOAD_ROOT = join(WORKSPACE_ROOT, "uploads");
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_EXT = new Set([

@@ -4025,7 +4025,7 @@ async function startup() {
     log.warn("Redis connexion échouée (dégradé sans cache)", { error: err.message }),
   );
 
-  server.listen(PORT, () => {
+  server.listen(PORT, process.env.HOST || "127.0.0.1", () => {
     log.info(`ClawBoard Backend started on :${PORT}`);
     log.info(dbOk ? "DB: PostgreSQL connecté ✓" : "DB: mode no-DB (mock) ⚠");
   });
