@@ -14,6 +14,7 @@ import { execFile, spawn } from "node:child_process";
 import { readFile, writeFile, readdir, stat, mkdir, appendFile } from "node:fs/promises";
 import path from "node:path";
 import { homedir } from "node:os";
+import { generateText } from "../src/lib/llm.mjs";
 
 // ─── In-memory stores ────────────────────────────────────────────────────────
 const sessions = new Map(); // cowork sessions
@@ -928,12 +929,49 @@ async function executeTool(session, sessionDir, toolName, input) {
 
 // ─── LLM call proxy ────────────────────────────────────────────────────────
 
+// Fallback OpenCode (Go/Zen) : réponse texte réelle (single-pass) si pas de clé Anthropic.
+async function callOpenCode(session, ctx) {
+  const key =
+    process.env.OPENCODE_API_KEY || ctx?.state?.apiKeys?.opencode || null;
+  if (!key) return buildDemoResponse(session);
+  try {
+    const systemPrompt = buildSystemPrompt(session);
+    const msgs = session.messages
+      .filter((m) => m.role === "user" || m.role === "assistant")
+      .slice(-12)
+      .map((m) => ({
+        role: m.role,
+        content:
+          typeof m.content === "string"
+            ? m.content
+            : JSON.stringify(m.content),
+      }));
+    const r = await generateText({
+      key,
+      baseUrl: process.env.LLM_BASE_URL || "https://opencode.ai/inference/go/v1",
+      model: "deepseek-v4.1-flash",
+      sessionHeader: "clawboard-cowork",
+      messages: [{ role: "system", content: systemPrompt }, ...msgs],
+      maxTokens: 2048,
+    });
+    session.tokensUsed += (r.promptTokens || 0) + (r.completionTokens || 0);
+    return {
+      content: [{ type: "text", text: r.text }],
+      usage: { input_tokens: r.promptTokens, output_tokens: r.completionTokens },
+    };
+  } catch {
+    return buildDemoResponse(session);
+  }
+}
+
 async function callLLM(session, tools, ctx) {
   // Try to use the configured provider (Anthropic preferred for computer use)
-  const apiKey = process.env.ANTHROPIC_API_KEY || ctx?.apiKeys?.anthropic;
+  const apiKey =
+    process.env.ANTHROPIC_API_KEY ||
+    ctx?.apiKeys?.anthropic ||
+    ctx?.state?.apiKeys?.anthropic;
   if (!apiKey) {
-    // Mock response for demo
-    return buildDemoResponse(session);
+    return callOpenCode(session);
   }
 
   const systemPrompt = buildSystemPrompt(session);
@@ -984,7 +1022,7 @@ async function callLLM(session, tools, ctx) {
       1000;
     return data;
   } catch (err) {
-    return buildDemoResponse(session);
+    return callOpenCode(session, ctx);
   }
 }
 

@@ -28,6 +28,7 @@ import {
 import { validate, schemas } from "./src/lib/validate.mjs";
 import { checkRateLimit } from "./src/lib/rateLimit.mjs";
 import { createLogger } from "./src/lib/logger.mjs";
+import { generateText } from "./src/lib/llm.mjs";
 
 // ─── Modular Router ───────────────────────────────────────────────────────────
 import { Router } from "./routes/router.mjs";
@@ -3309,6 +3310,101 @@ function sanitizeHistory(messages) {
   return result;
 }
 
+// ── OpenCode (Go/Zen) — clé env ou DB ────────────────────────────────────────
+function openCodeKey() {
+  return (
+    process.env.OPENCODE_API_KEY ||
+    (apiKeys.opencode && decryptKey(apiKeys.opencode)) ||
+    null
+  );
+}
+
+function normalizeOpenCodeModel(model) {
+  return String(model || "deepseek-v4.1-flash").replace(
+    /^opencode(-go|-zen)?\//,
+    "",
+  );
+}
+
+// Modèles réellement exposés par OpenCode Go (catalogue vérifié le 2026-11-24).
+const OPENCODE_GO_MODELS = new Set([
+  "deepseek-v4.1-flash", "deepseek-v4-pro", "glm-5.3", "grok-4.7",
+  "muse-spark-1.2-contributor", "muse-spark-1.3-contributor", "glm-5.3-flash",
+  "gpt-5.6-luna", "gpt-6-luna", "hy3", "hy4-preview", "kimi-k2.7-code",
+  "kimi-k3", "mimo-v2.6-flash", "mimo-v2.6-pro", "minimax-m3",
+  "minimax-m3.1-flash", "step-5-preview", "beam-free", "qwen3.8-max",
+  "qwen3.8-flash", "qwen3.7-plus", "kimi-k3.1-pro", "iceman-contributor-free",
+  "gemini-4-argon", "hy4", "hy4-flash-free", "qwen4-max", "longcat-2.5",
+  "hungerg-free", "jev-1.14", "gemini-decision-1", "gpt-6-luna-decision",
+  "text-embedding-3-small", "qwen3-embedding-8b", "gemini-embedding-2",
+]);
+
+// Résout un modèle arbitraire vers un modèle OpenCode Go valide.
+function toOpenCodeModel(model) {
+  const m = normalizeOpenCodeModel(model);
+  return OPENCODE_GO_MODELS.has(m) ? m : "deepseek-v4.1-flash";
+}
+
+function openCodeMessages(messages) {
+  return messages.map((m) => ({
+    role: m.role,
+    content: Array.isArray(m.content)
+      ? m.content.find((c) => c.type === "text")?.text || ""
+      : m.content,
+  }));
+}
+
+async function callOpenCode(messages, model) {
+  const key = openCodeKey();
+  if (!key) return null;
+  const r = await generateText({
+    key,
+    baseUrl: process.env.LLM_BASE_URL || "https://opencode.ai/inference/go/v1",
+    model: toOpenCodeModel(model),
+    sessionHeader: "clawboard-lia",
+    messages: [{ role: "system", content: LIA_SYSTEM }, ...openCodeMessages(messages)],
+  });
+  return { message: r.text, toolCalls: [] };
+}
+
+async function streamOpenCode(messages, model, res) {
+  const key = openCodeKey();
+  if (!key) return false;
+  const resp = await fetch(
+    `${process.env.LLM_BASE_URL || "https://opencode.ai/inference/go/v1"}/chat/completions`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+        "x-opencode-session": "clawboard-lia",
+        Accept: "text/event-stream",
+      },
+      body: JSON.stringify({
+        model: toOpenCodeModel(model),
+        messages: [
+          { role: "system", content: LIA_SYSTEM },
+          ...openCodeMessages(messages),
+        ],
+        max_tokens: 1500,
+        temperature: 0.7,
+        stream: true,
+      }),
+      signal: AbortSignal.timeout(60000),
+    },
+  );
+  if (!resp.ok) {
+    const e = await resp.json().catch(() => ({}));
+    await simulateStream(
+      `❌ Erreur OpenCode : ${e.error?.message || resp.status}`,
+      res,
+    );
+    return true;
+  }
+  await pipeOpenAIStream(resp, res);
+  return true;
+}
+
 async function runAgenticLoop(messages, model, permissions) {
   try {
     if (model.startsWith("ollama/")) return await callOllama(messages, model);
@@ -3621,8 +3717,27 @@ async function runAgenticLoop(messages, model, permissions) {
         }
       );
     }
+    // OpenCode (Go/Zen) — provider explicite via préfixe "opencode/"
+    if (
+      model.startsWith("opencode/") ||
+      model.startsWith("opencode-go/") ||
+      model.startsWith("opencode-zen/")
+    ) {
+      const r = await callOpenCode(slim, model);
+      return (
+        r || {
+          message: `❌ Clé OpenCode non configurée. Ajoutez-la dans **Paramètres → Clés API** (provider : opencode) ou via OPENCODE_API_KEY.`,
+          toolCalls: [],
+        }
+      );
+    }
     const anthropicResult = await callAnthropic(slim, model, permissions);
     if (anthropicResult) return anthropicResult;
+    // Fallback OpenCode si clé présente (modèle texte pas cher)
+    if (openCodeKey()) {
+      const r = await callOpenCode(slim, "deepseek-v4.1-flash");
+      if (r) return r;
+    }
     return await smartMock(messages, permissions);
   } catch (e) {
     return { message: `❌ Erreur API : ${e.message}`, toolCalls: [] };
@@ -3753,6 +3868,7 @@ const routeCtx = {
   rowToRecurrence,
   runAgenticLoop,
   simulateStream,
+  streamOpenCode,
   runNemoClawCmd,
   parseNemoClawList,
   parseNemoClawStatus,

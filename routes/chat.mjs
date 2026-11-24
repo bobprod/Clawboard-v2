@@ -474,6 +474,7 @@ export function register(router, ctx) {
     checkRateLimit,
     runAgenticLoop,
     simulateStream,
+    streamOpenCode,
     pool,
     getAllSkills,
     broadcastTasks,
@@ -535,11 +536,34 @@ export function register(router, ctx) {
             `data: ${JSON.stringify({ done: true, toolCalls: [] })}\n\n`,
           );
         } else {
-          const result = await runAgenticLoop(messages, model, permissions);
-          const text = result?.message || "";
-          const toolCalls = result?.toolCalls || [];
-          await simulateStream(text, res);
-          res.write(`data: ${JSON.stringify({ done: true, toolCalls })}\n\n`);
+          // Streaming réel si OpenCode est configuré, sinon boucle agentique
+          if (
+            process.env.OPENCODE_API_KEY ||
+            model.startsWith("opencode/") ||
+            model.startsWith("opencode-go/") ||
+            model.startsWith("opencode-zen/")
+          ) {
+            const ok = await streamOpenCode(messages, model, res);
+            if (ok) {
+              res.write(
+                `data: ${JSON.stringify({ done: true, toolCalls: [] })}\n\n`,
+              );
+            } else {
+              const result = await runAgenticLoop(messages, model, permissions);
+              await simulateStream(result?.message || "", res);
+              res.write(
+                `data: ${JSON.stringify({ done: true, toolCalls: result?.toolCalls || [] })}\n\n`,
+              );
+            }
+          } else {
+            const result = await runAgenticLoop(messages, model, permissions);
+            const text = result?.message || "";
+            const toolCalls = result?.toolCalls || [];
+            await simulateStream(text, res);
+            res.write(
+              `data: ${JSON.stringify({ done: true, toolCalls })}\n\n`,
+            );
+          }
         }
       } catch (err) {
         await simulateStream(`❌ Erreur : ${err.message}`, res);
