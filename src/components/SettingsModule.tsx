@@ -293,10 +293,7 @@ const CATEGORIES = ["International", "Asie", "Agrégateurs"];
 // ─── Settings sections ────────────────────────────────────────────────────────
 
 type Section =
-  | "mcp"
-  | "skills"
-  | "plugins"
-  | "tools"
+  | "capacites"
   | "server"
   | "apikeys"
   | "ollama"
@@ -304,6 +301,9 @@ type Section =
   | "notifications"
   | "voice"
   | "profile";
+
+// Filtre par source de l'onglet unique « Capacités ».
+type CapSource = "all" | "mcp" | "skills" | "plugins" | "tools";
 
 interface NavItem {
   id: Section;
@@ -316,12 +316,7 @@ interface NavItem {
 const NAV_GROUPS: { group: string; items: NavItem[] }[] = [
   {
     group: "Extensions & Capacités",
-    items: [
-      { id: "mcp", label: "MCP & Connecteurs", icon: Plug },
-      { id: "skills", label: "Skills", icon: ToyBrick },
-      { id: "plugins", label: "Plugins", icon: Puzzle },
-      { id: "tools", label: "Outils Agent", icon: Wrench },
-    ],
+    items: [{ id: "capacites", label: "Capacités", icon: Puzzle }],
   },
   {
     group: "Configuration",
@@ -344,15 +339,38 @@ const NAV_GROUPS: { group: string; items: NavItem[] }[] = [
 const NAV: NavItem[] = NAV_GROUPS.flatMap((g) => g.items);
 
 // "App-like" sections render their own full module (no boxed form panel).
-const APP_SECTIONS = new Set<Section>(["mcp", "skills", "tools"]);
+const APP_SECTIONS = new Set<Section>(["capacites"]);
 
 // Extension sections show a one-line clarifier so MCP / Skills / Plugins /
 // Outils stay distinct and complementary in the user's mind.
 const EXTENSION_HINTS: Partial<Record<Section, string>> = {
-  mcp: "Outils externes branchés via le protocole MCP (filesystem, GitHub, APIs…). Complémentaire des Skills (compétences) et des Plugins (canaux).",
-  skills: "Compétences/prompts réutilisables (rédaction, code, analyse…). Ce ne sont pas des outils : elles orientent le comportement de l'agent.",
-  plugins: "Extensions du runtime OpenClaw : canaux de communication (Twitch, Matrix, Teams…), outils cœur et diagnostics. Différent des serveurs MCP.",
-  tools: "Gouvernance des outils intégrés : profils, permissions allow/deny. Contrôle ce que les agents ont le droit d'exécuter.",
+  capacites:
+    "Toutes les capacités extensibles de ClawBoard réunies en un seul endroit : serveurs MCP (outils externes), Skills (compétences réutilisables), Plugins (canaux & diagnostics) et gouvernance des outils intégrés. Filtrez par source ci-dessous.",
+};
+
+// ── Compatibilité URL : les anciens ids d'onglets (mcp, connectors,
+// integrations, skills, plugins, tools) redirigent vers l'onglet unique
+// « Capacités », avec le filtre de source correspondant présélectionné.
+const LEGACY_CAP_TABS: Record<string, CapSource> = {
+  mcp: "mcp",
+  connectors: "mcp",
+  integrations: "skills",
+  skills: "skills",
+  plugins: "plugins",
+  tools: "tools",
+};
+
+// Résout un ?tab= en section (+ filtre de source si onglet Capacités).
+const resolveTab = (
+  tab: string | null,
+): { section: Section; source: CapSource | null } | null => {
+  if (!tab) return null;
+  if (tab === "capacites") return { section: "capacites", source: null };
+  const legacy = LEGACY_CAP_TABS[tab];
+  if (legacy) return { section: "capacites", source: legacy };
+  if (NAV.some((n) => n.id === tab))
+    return { section: tab as Section, source: null };
+  return null;
 };
 
 // ─── KeyRow component ─────────────────────────────────────────────────────────
@@ -4192,22 +4210,174 @@ const ExtensionHint = ({ text }: { text: string }) => (
   </div>
 );
 
+// ─── Section: Capacités (MCP + Skills + Plugins + Outils) ────────────────────
+
+const CAP_SOURCES: {
+  id: CapSource;
+  label: string;
+  icon?: React.FC<{ size?: number }>;
+}[] = [
+  { id: "all", label: "Tous" },
+  { id: "mcp", label: "MCP", icon: Plug },
+  { id: "skills", label: "Skills", icon: ToyBrick },
+  { id: "plugins", label: "Plugins", icon: Puzzle },
+  { id: "tools", label: "Outils", icon: Wrench },
+];
+
+const CapFallback = () => (
+  <div
+    style={{
+      padding: 32,
+      textAlign: "center",
+      color: "var(--text-muted)",
+    }}
+  >
+    <Loader2 size={20} style={{ animation: "spin 1s linear infinite" }} />
+  </div>
+);
+
+// Titre de section — pour les modules sans en-tête propre (ex. Plugins).
+const CapSectionTitle = ({
+  icon: Icon,
+  label,
+}: {
+  icon: React.FC<{ size?: number; color?: string }>;
+  label: string;
+}) => (
+  <h3
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      margin: "0 0 16px",
+      fontSize: "1.1rem",
+      color: "var(--text-primary)",
+    }}
+  >
+    <Icon size={18} color="var(--brand-accent)" />
+    {label}
+  </h3>
+);
+
+const CapacitesSection = ({
+  source,
+  onSourceChange,
+}: {
+  source: CapSource;
+  onSourceChange: (s: CapSource) => void;
+}) => {
+  const show = (s: CapSource) => source === "all" || source === s;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+      {/* Barre de filtres segmentés par source */}
+      <div
+        role="tablist"
+        style={{
+          display: "flex",
+          gap: 4,
+          flexWrap: "wrap",
+          width: "fit-content",
+          background: "var(--bg-glass)",
+          border: "1px solid var(--border-subtle)",
+          borderRadius: "var(--radius-md, 12px)",
+          padding: 4,
+        }}
+      >
+        {CAP_SOURCES.map((s) => {
+          const active = source === s.id;
+          const Icon = s.icon;
+          return (
+            <button
+              key={s.id}
+              role="tab"
+              aria-selected={active}
+              onClick={() => onSourceChange(s.id)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "8px 16px",
+                borderRadius: "calc(var(--radius-md, 12px) - 2px)",
+                border: "none",
+                cursor: "pointer",
+                fontSize: "0.82rem",
+                fontWeight: 600,
+                transition: "all 0.2s",
+                background: active ? "var(--brand-primary)" : "transparent",
+                color: active ? "#fff" : "var(--text-secondary)",
+              }}
+            >
+              {Icon && <Icon size={14} />}
+              {s.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── MCP ── */}
+      {show("mcp") && (
+        <section style={{ minWidth: 0 }}>
+          <Suspense fallback={<CapFallback />}>
+            <McpModule embedded />
+          </Suspense>
+        </section>
+      )}
+
+      {/* ── Skills ── */}
+      {show("skills") && (
+        <section style={{ minWidth: 0 }}>
+          <Suspense fallback={<CapFallback />}>
+            <SkillsModule />
+          </Suspense>
+        </section>
+      )}
+
+      {/* ── Plugins ── */}
+      {show("plugins") && (
+        <section style={{ minWidth: 0 }}>
+          <CapSectionTitle icon={Puzzle} label="Plugins" />
+          <PluginsSection />
+        </section>
+      )}
+
+      {/* ── Outils ── */}
+      {show("tools") && (
+        <section style={{ minWidth: 0 }}>
+          <Suspense fallback={<CapFallback />}>
+            <ToolsModule />
+          </Suspense>
+        </section>
+      )}
+    </div>
+  );
+};
+
 // ─── SettingsModule ───────────────────────────────────────────────────────────
 
 export const SettingsModule = () => {
   const [searchParams] = useSearchParams();
-  const initSection = (searchParams.get("tab") as Section) ?? "server";
+  const initResolved = resolveTab(searchParams.get("tab"));
   const [section, setSection] = useState<Section>(
-    NAV.some((n) => n.id === initSection) ? initSection : "server",
+    initResolved?.section ?? "server",
+  );
+  // Filtre de source de l'onglet Capacités — piloté aussi par les ?tab= legacy.
+  const [capSource, setCapSource] = useState<CapSource>(
+    initResolved?.source ?? "all",
   );
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const { syncToBackend, configuredCount } = useApiKeys();
 
-  // sync section when ?tab= changes (e.g. navigating from topbar menu)
+  // sync section when ?tab= changes (e.g. navigating from topbar menu).
+  // Les anciens ids (mcp, connectors, integrations, skills, plugins, tools)
+  // sont résolus vers l'onglet Capacités + filtre de source correspondant.
   useEffect(() => {
-    const tab = searchParams.get("tab") as Section;
-    if (tab && NAV.some((n) => n.id === tab)) setSection(tab);
+    const resolved = resolveTab(searchParams.get("tab"));
+    if (resolved) {
+      setSection(resolved.section);
+      if (resolved.source) setCapSource(resolved.source);
+    }
   }, [searchParams]);
 
   const handleGlobalSave = async () => {
@@ -4221,20 +4391,19 @@ export const SettingsModule = () => {
 
   const renderContent = () => {
     switch (section) {
-      case "mcp":
-        return <McpModule embedded />;
-      case "skills":
-        return <SkillsModule />;
-      case "tools":
-        return <ToolsModule />;
+      case "capacites":
+        return (
+          <CapacitesSection
+            source={capSource}
+            onSourceChange={setCapSource}
+          />
+        );
       case "server":
         return <ServerSection />;
       case "apikeys":
         return <ApiKeysSection />;
       case "ollama":
         return <OllamaSection />;
-      case "plugins":
-        return <PluginsSection />;
       case "security":
         return <SecuritySection />;
       case "notifications":
@@ -4424,8 +4593,8 @@ export const SettingsModule = () => {
 
         {/* Content panel */}
         {isApp ? (
-          // App-like sections (MCP / Skills / Outils) render full-bleed —
-          // they own their layout, header and persistence.
+          // App-like section (Capacités) renders full-bleed — the embedded
+          // modules own their layout, header and persistence.
           <div style={{ minWidth: 0 }}>
             {hint && <ExtensionHint text={hint} />}
             <Suspense
