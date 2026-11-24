@@ -1,0 +1,6 @@
+# STT local (Whisper CPU) - dependances
+faster-whisper>=1.0.0
+# huggingface-hub 1.x/2.x casse faster-whisper ("metadata_errors") : rester en 0.x
+huggingface-hub<1
+# av 19 a retire le parametre metadata_errors utilise par faster-whisper
+av<19

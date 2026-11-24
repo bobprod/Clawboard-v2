@@ -29,6 +29,13 @@ type VoiceSettings = {
   voiceName: string;
   rate: number;
   channel: "stereo" | "left" | "right";
+  sttMode: "browser" | "local" | "cloud" | "auto";
+};
+
+type SttStatus = {
+  local: { available: boolean; model?: string; error?: string };
+  cloud: { available: boolean; provider?: string };
+  browser: boolean;
 };
 
 type SystemAudio = {
@@ -46,7 +53,7 @@ const normalize = (s: string) => s.normalize("NFD").replace(DIACRITICS, "").toLo
 const API_BASE = "http://localhost:4000";
 
 const SETTINGS_KEY = "clawboard-voice-settings";
-const DEFAULT_SETTINGS: VoiceSettings = { micId: "", lang: "fr-FR", voiceName: "", rate: 1.05, channel: "stereo" };
+const DEFAULT_SETTINGS: VoiceSettings = { micId: "", lang: "fr-FR", voiceName: "", rate: 1.05, channel: "stereo", sttMode: "browser" };
 
 function loadSettings(): VoiceSettings {
   try {
@@ -58,6 +65,16 @@ function loadSettings(): VoiceSettings {
   }
 }
 
+async function blobToBase64(blob: Blob): Promise<string> {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...Array.from(bytes.subarray(i, i + chunk)));
+  }
+  return btoa(binary);
+}
+
 const LANGS = [
   { value: "fr-FR", label: "Français" },
   { value: "en-US", label: "English (US)" },
@@ -67,6 +84,18 @@ const LANGS = [
 const HELP =
   "Je peux creer une tache, lister les taches, ouvrir la page des taches, ou donner l'etat d'un projet. " +
   "Par exemple : cree une tache pour verifier le moteur DMX.";
+
+// Le STT peut mal entendre les noms propres : alias tolerants.
+const PROJECT_ALIASES: Array<[RegExp, string]> = [
+  [/glow|glot|glologique|glow\s*logic/, "glow-logic"],
+  [/bob\s*prod|bobprod/, "bobprod"],
+  [/bob\s*event|bobevent/, "bobevent"],
+  [/bob\s*cam|bobcam/, "bobcam"],
+  [/ambianc|ambiance/, "ambiancia"],
+  [/claw\s*board|clawboard/, "clawboard"],
+  [/sound\s*wave|soundwave/, "soundwave"],
+  [/tools\s*forge|toolsforge/, "toolsforge"],
+];
 
 const EXAMPLE_COMMANDS = [
   "Crée une tâche pour vérifier le moteur DMX",
@@ -99,6 +128,7 @@ export function VoiceAssistant() {
   const [recording, setRecording] = useState(false);
   const [recordUrl, setRecordUrl] = useState<string | null>(null);
   const [trackInfo, setTrackInfo] = useState<Record<string, unknown> | null>(null);
+  const [sttStatus, setSttStatus] = useState<SttStatus | null>(null);
 
   const recognitionRef = useRef<any>(null);
   const finalTextRef = useRef("");
@@ -175,6 +205,15 @@ export function VoiceAssistant() {
   useEffect(() => {
     if (settingsOpen) void refreshSystemAudio();
   }, [settingsOpen, refreshSystemAudio]);
+
+  const refreshSttStatus = useCallback(async () => {
+    const { data } = await apiFetchJson<SttStatus>(`${API_BASE}/api/stt/status`);
+    if (data) setSttStatus(data);
+  }, []);
+
+  useEffect(() => {
+    if (settingsOpen) void refreshSttStatus();
+  }, [settingsOpen, refreshSttStatus]);
 
   // ── Etat de la permission micro ────────────────────────────────────────
   useEffect(() => {
@@ -386,10 +425,14 @@ export function VoiceAssistant() {
 
   // ── Commandes ──────────────────────────────────────────────────────────
   const readProjectState = useCallback(async (rawName: string) => {
-    const slug = normalize(rawName)
-      .replace(/^(le |la |les |projet |de |du |des )+/, "")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
+    const normalizedName = normalize(rawName);
+    const alias = PROJECT_ALIASES.find(([pattern]) => pattern.test(normalizedName));
+    const slug = alias
+      ? alias[1]
+      : normalizedName
+          .replace(/^(le |la |les |projet |de |du |des )+/, "")
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "");
 
     const candidates = [slug, slug.replace(/-/g, "")];
     for (const candidate of candidates) {
@@ -419,7 +462,7 @@ export function VoiceAssistant() {
       try {
         // 1. Creer une tache
         const create = text.match(
-          /(?:cree|creer|ajoute|ajouter|nouvelle)\s+(?:une\s+|la\s+)?tache\s+(?:pour\s+)?(.+)/,
+          /(?:cree|creer|crie|crier|creez|ajoute|ajouter|ajoutez|nouvelle)\s+(?:une\s+|la\s+)?tache\s+(?:pour\s+)?(.+)/,
         );
         if (create) {
           const titre = create[1].trim();
@@ -434,13 +477,13 @@ export function VoiceAssistant() {
         }
 
         // 2. Ouvrir la page des taches
-        if (/(ouvre|va sur|affiche|montre).*(tache)/.test(text) && !/(liste|combien)/.test(text)) {
+        if (/(ouvre|ouvrez|va sur|affiche|montre).*(tache)/.test(text) && !/(liste|combien)/.test(text)) {
           navigate("/tasks");
           return answer("J'ouvre la page des taches.");
         }
 
         // 3. Lister les taches
-        if (/(liste|combien|quelles|etat des|point sur).*(tache)/.test(text) || /taches en cours/.test(text)) {
+        if (/(liste|listez|lisez|lis|combien|quelles|etat des|point sur).*(tache)/.test(text) || /taches en cours/.test(text)) {
           const { data, error } = await apiFetchJson<{ data: Task[]; total?: number }>(
             `${API_BASE}/api/tasks?limit=100`,
           );
@@ -486,6 +529,96 @@ export function VoiceAssistant() {
     },
     [answer, navigate, readProjectState],
   );
+
+  // ── Dictee via STT serveur (local ou cloud) ────────────────────────────
+  const listenWithServer = useCallback(async () => {
+    setOpen(true);
+    setReply("");
+    setTranscript("");
+    stopAll();
+    try {
+      const graph = await openStream();
+      const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : undefined;
+      const recorder = new MediaRecorder(graph.dest.stream, mime ? { mimeType: mime } : undefined);
+      const chunks: Blob[] = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+      const finished = new Promise<Blob>((resolve) => {
+        recorder.onstop = () => resolve(new Blob(chunks, { type: recorder.mimeType || "audio/webm" }));
+      });
+      recorderRef.current = recorder;
+      recorder.start(200);
+      setListening(true);
+
+      const data = new Uint8Array(graph.analyser.frequencyBinCount);
+      const startedAt = Date.now();
+      let heardSpeech = false;
+      let lastVoiceAt = Date.now();
+
+      const loop = () => {
+        graph.analyser.getByteTimeDomainData(data);
+        let sum = 0;
+        for (let i = 0; i < data.length; i++) {
+          const v = (data[i] - 128) / 128;
+          sum += v * v;
+        }
+        const rms = Math.sqrt(sum / data.length);
+        setLevel(Math.min(1, rms * 4));
+        const now = Date.now();
+        if (rms > 0.02) {
+          heardSpeech = true;
+          lastVoiceAt = now;
+        }
+        const tooLong = now - startedAt > 10000;
+        const silence = heardSpeech && now - lastVoiceAt > 900;
+        const nothing = !heardSpeech && now - startedAt > 4000;
+        if (tooLong || silence || nothing) {
+          if (recorder.state !== "inactive") recorder.stop();
+          return;
+        }
+        rafRef.current = requestAnimationFrame(loop);
+      };
+      loop();
+
+      const blob = await finished;
+      setListening(false);
+      stopAll();
+      if (blob.size < 800) return answer("Je n'ai rien entendu. Reessaie en parlant un peu plus fort.");
+
+      const base64 = await blobToBase64(blob);
+      const mode = settingsRef.current.sttMode;
+      const { data: result, error } = await apiFetchJson<{ text: string; provider: string }>(
+        `${API_BASE}/api/stt`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            audio: base64,
+            mimeType: blob.type || "audio/webm",
+            provider: mode === "browser" ? "auto" : mode,
+            lang: settingsRef.current.lang,
+          }),
+        },
+      );
+      if (error || !result) return answer(`Transcription impossible : ${error}`);
+      const text = (result.text || "").trim();
+      if (!text) return answer("Je n'ai pas compris. Reessaie.");
+      setTranscript(text);
+      await handleCommand(text);
+    } catch (err: any) {
+      setListening(false);
+      stopAll();
+      if (err?.name === "NotAllowedError") {
+        setMicState("denied");
+        answer("Micro refusé. Autorise le micro dans le navigateur puis réessaie.");
+      } else {
+        answer(`Erreur micro : ${err?.name || err?.message || "inconnue"}`);
+      }
+    }
+  }, [answer, handleCommand, openStream, stopAll]);
 
   // ── Initialisation de la reconnaissance vocale ─────────────────────────
   useEffect(() => {
@@ -560,6 +693,14 @@ export function VoiceAssistant() {
 
   const toggleListening = () => {
     setOpen(true);
+    if (settingsRef.current.sttMode !== "browser") {
+      if (listening) {
+        stopAll();
+        return;
+      }
+      void listenWithServer();
+      return;
+    }
     const recognition = recognitionRef.current;
     if (!recognition) {
       setReply(
@@ -709,6 +850,36 @@ export function VoiceAssistant() {
                   </div>
                 )}
               </div>
+
+              {/* Moteur de transcription */}
+              <label style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                <span style={{ color: "var(--text-secondary, #9ca3af)" }}>Moteur de reconnaissance</span>
+                <select
+                  value={settings.sttMode}
+                  onChange={(e) => updateSettings({ sttMode: e.target.value as VoiceSettings["sttMode"] })}
+                  aria-label="Moteur de reconnaissance"
+                  style={{ background: "rgba(255,255,255,0.06)", color: "var(--text-primary, #fff)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "8px", padding: "6px 8px", fontSize: "0.78rem" }}
+                >
+                  <option value="browser">Navigateur (gratuit)</option>
+                  <option value="local">
+                    Whisper local{sttStatus && !sttStatus.local.available ? " — non installé" : ""}
+                  </option>
+                  <option value="cloud">
+                    Cloud Deepgram{sttStatus && !sttStatus.cloud.available ? " — clé requise" : ""}
+                  </option>
+                  <option value="auto">Auto (local puis cloud)</option>
+                </select>
+                <span style={{ color: "#6b7280", fontSize: "0.7rem", lineHeight: 1.4 }}>
+                  {settings.sttMode === "browser"
+                    ? "Le navigateur utilise le micro par défaut du système."
+                    : "Utilise le micro et le canal choisis ci-dessus (enregistrement puis transcription serveur)."}
+                  {sttStatus && settings.sttMode !== "browser" && (
+                    <>
+                      {" "}Local : {sttStatus.local.available ? `OK (${sttStatus.local.model})` : "indisponible"} · Cloud : {sttStatus.cloud.available ? "OK" : "non configuré"}
+                    </>
+                  )}
+                </span>
+              </label>
 
               {/* Peripheriques systeme (lus par le backend) */}
               <div>
