@@ -49,6 +49,9 @@ const TaskCreator = lazy(() =>
 const TachesPage = lazy(() =>
   import("./components/TachesPage").then((m) => ({ default: m.TachesPage })),
 );
+const ProjectsPage = lazy(() =>
+  import("./components/ProjectsPage").then((m) => ({ default: m.ProjectsPage })),
+);
 const SecurityModule = lazy(() =>
   import("./components/SecurityModule").then((m) => ({
     default: m.SecurityModule,
@@ -111,6 +114,7 @@ import {
   Menu,
   HardDrive,
   Layers,
+  FolderKanban,
 } from "lucide-react";
 import "./index.css";
 import { GlobalChatProvider } from "./hooks/useGlobalChat";
@@ -402,6 +406,14 @@ const PageContent = () => {
             }
           />
           <Route
+            path="/projects"
+            element={
+              <EB label="Projets">
+                <ProjectsPage />
+              </EB>
+            }
+          />
+          <Route
             path="/tasks/:taskId"
             element={
               <EB label="Tâches">
@@ -564,6 +576,9 @@ const Sidebar = ({
           <NavLink to="/tasks" icon={TerminalSquare} tourId="nav-tasks">
             Tâches
           </NavLink>
+          <NavLink to="/projects" icon={FolderKanban} tourId="nav-projects">
+            Projets
+          </NavLink>
           <NavLink to="/agents" icon={Network} tourId="nav-agents">
             Agents
           </NavLink>
@@ -629,6 +644,10 @@ Ce formulaire permet de créer une nouvelle tâche IA avec : prompt (compteur mo
 Il supporte l'auto-save draft (localStorage clawboard-task-creator-draft), le clone/replay depuis une tâche existante (prefill via navigation state), et la ValidationBanner (erreurs: no-model, warnings: no-dest, short-prompt).
 Tu peux aider à rédiger des prompts optimaux, choisir le bon modèle selon la tâche, et configurer les paramètres avancés.`,
 
+  "/projects": `Tu es sur la page Projets de ClawBoard.
+Ce module regroupe les tâches par projet, comme dans Notion : cartes de projets avec couleur, description, compteur de tâches (terminées/total) et barre de progression. Chaque tâche peut être rattachée à un projet (ou laissée « sans projet ») via un menu déroulant.
+Tu peux aider à organiser les tâches en projets cohérents, renommer/recolorer les projets, et expliquer comment structurer le travail en projets.`,
+
   "/chat": `Tu es sur la page Chat avec Lia de ClawBoard.
 Ce module est un chat complet avec l'IA en streaming SSE. Il supporte : multi-agents (main, assistant, research, coder), sélection de modèle, modes de conversation, pré-instructions personnalisées, historique des messages, tool calls avec affichage des appels d'outils.
 Tu peux aider à formuler des requêtes complexes, expliquer les tool calls, et choisir le bon agent/mode pour chaque besoin.`,
@@ -691,6 +710,7 @@ function getPageContext(pathname: string): string {
 const PAGE_TITLES: Record<string, string> = {
   "/": "Tableau de bord",
   "/tasks": "Tâches",
+  "/projects": "Projets",
   "/agents": "Agents",
   "/memory": "Mémoire",
   "/collaborations": "Collaborations",

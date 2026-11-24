@@ -84,8 +84,8 @@ export function register(router, ctx) {
       const now = new Date().toISOString();
       const safe = sanitizeObject(b);
       await pool.query(
-        `INSERT INTO tasks (id, titre, modele_id, statut, priorite, agent, skill_name, instructions, scheduled_at, recurrence_human, created_at, updated_at, cout, tokens_in, tokens_out)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$11,0,0,0)`,
+        `INSERT INTO tasks (id, titre, modele_id, statut, priorite, agent, skill_name, instructions, scheduled_at, recurrence_human, project_id, created_at, updated_at, cout, tokens_in, tokens_out)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$12,0,0,0)`,
         [
           id,
           safe.name || safe.titre || "Sans titre",
@@ -97,6 +97,7 @@ export function register(router, ctx) {
           safe.instructions || null,
           safe.scheduledAt || now,
           safe.recurrenceHuman || null,
+          safe.projectId || null,
           now,
         ],
       );
@@ -221,6 +222,8 @@ export function register(router, ctx) {
           setClauses.push(`priorite=$${vals.push(safe.priorite)}`);
         if (safe.llm !== undefined)
           setClauses.push(`llm=$${vals.push(safe.llm)}`);
+        if (safe.projectId !== undefined)
+          setClauses.push(`project_id=$${vals.push(safe.projectId)}`);
         if (setClauses.length > 0) {
           await pool.query(
             `UPDATE tasks SET ${setClauses.join(",")}, updated_at=NOW() WHERE id=$1`,

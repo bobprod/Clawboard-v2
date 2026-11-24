@@ -34,6 +34,7 @@ import { generateText } from "./src/lib/llm.mjs";
 import { Router } from "./routes/router.mjs";
 import { register as registerHealthRoutes } from "./routes/health.mjs";
 import { register as registerTaskRoutes } from "./routes/tasks.mjs";
+import { register as registerProjectRoutes } from "./routes/projects.mjs";
 import { register as registerResourceRoutes } from "./routes/resources.mjs";
 import { register as registerChatRoutes } from "./routes/chat.mjs";
 import { register as registerSecurityRoutes } from "./routes/security.mjs";
@@ -235,6 +236,7 @@ function rowToTask(r, activities = [], executions = []) {
     executions: executions,
     tokensUsed: { prompt: r.tokens_in || 0, completion: r.tokens_out || 0 },
     cost: r.cout || 0,
+    projectId: r.project_id || null,
   };
 }
 
@@ -411,6 +413,18 @@ async function runPhase2Migration() {
     ALTER TABLE task_executions ADD COLUMN IF NOT EXISTS stdout TEXT;
 
     ALTER TABLE task_activities ADD COLUMN IF NOT EXISTS label TEXT;
+
+    ALTER TABLE tasks ADD COLUMN IF NOT EXISTS project_id TEXT;
+
+    CREATE TABLE IF NOT EXISTS projects (
+      id TEXT PRIMARY KEY,
+      nom TEXT NOT NULL,
+      description TEXT,
+      couleur TEXT DEFAULT '#8b5cf6',
+      statut TEXT DEFAULT 'actif',
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    );
 
     CREATE TABLE IF NOT EXISTS crons (
       id TEXT PRIMARY KEY,
@@ -3916,6 +3930,7 @@ const routeCtx = {
 const router = new Router();
 registerHealthRoutes(router, routeCtx);
 registerTaskRoutes(router, routeCtx);
+registerProjectRoutes(router, routeCtx);
 registerResourceRoutes(router, routeCtx);
 registerChatRoutes(router, routeCtx);
 registerSecurityRoutes(router, routeCtx);
