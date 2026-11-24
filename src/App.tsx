@@ -20,6 +20,7 @@ import { TourGuide, resetTour } from "./components/TourGuide";
 import { LoginPage } from "./components/LoginPage";
 import { ToastProvider } from "./components/ToastProvider";
 import { PWAUpdateToast } from "./components/PWAUpdateToast";
+import { VoiceAssistant } from "./components/VoiceAssistant";
 
 interface ClawUser {
   username: string;
@@ -902,6 +903,7 @@ const AppShell = ({
         <PageContent />
       </main>
       <AgentChat pageContext={getPageContext(location.pathname)} />
+      <VoiceAssistant />
     </div>
   );
 };
