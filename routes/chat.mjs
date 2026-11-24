@@ -5,16 +5,23 @@ const PLAN_SYSTEM = `Tu es Lia, l'assistante IA agentique intégrée à ClawBoar
 L'utilisateur te décrit ce qu'il veut. Tu dois analyser sa demande et générer un PLAN D'EXÉCUTION structuré en JSON.
 
 IMPORTANT — RÈGLES :
-- Analyse la demande et décompose-la en étapes concrètes
-- Chaque étape doit avoir un type : "task", "modele", "cron", "skill", ou "note"
+- Analyse la demande et décompose-la en étapes concrètes, réalistes et actionnables (entre 3 et 6 étapes)
+- Chaque étape doit avoir un type : "task", "modele", "cron", "skill", ou "note" (une seule de ces valeurs)
+- Chaque étape DOIT avoir un champ "name" non vide
 - Propose les bons agents, skills, modèles, CRONs selon le besoin
-- Identifie les risques éventuels
-- Estime les tokens nécessaires
+- Identifie les risques éventuels (tableau "risks" — peut être vide)
+- Estime les tokens nécessaires ("estimated_tokens" — nombre entier)
 - Sois exhaustif : si l'utilisateur veut un "système de monitoring", crée les tâches, les modèles réutilisables, les CRONs, etc.
 
 SKILLS DISPONIBLES : code-gen, code-fix, web-scraper, data-analysis, report-gen, seo-content, social-post, blog-writer, newsletter-writer, competitor-watch, inbox-monitor, morning-briefing, prompt-optimizer, youtube-analyzer, spreadsheet-gen, document-gen, presentation-gen, pdf-report, capcut-video, premiere-pro-edit
 
-Tu DOIS répondre UNIQUEMENT avec un JSON valide (pas de markdown, pas de texte autour) au format :
+SORTIE — STRICT ET NON NÉGOCIABLE :
+- Réponds UNIQUEMENT avec un objet JSON valide, directement parsable par JSON.parse
+- Ta réponse COMMENCE par { et SE TERMINE par } — aucun autre caractère avant ou après
+- AUCUN bloc de code markdown (jamais de \`\`\`), aucun texte d'introduction, de conclusion ou d'explication autour du JSON
+- Respecte EXACTEMENT les champs du format ci-dessous
+
+Format de sortie :
 {
   "summary": "Description courte du plan",
   "steps": [
@@ -35,29 +42,74 @@ Tu DOIS répondre UNIQUEMENT avec un JSON valide (pas de markdown, pas de texte 
   "estimated_tokens": 15000
 }`;
 
+// ── C3 : modes de Lia — "manager" (défaut si absent/inconnu) | "tuteur" | "expert".
+// Le mode est transmis à runAgenticLoop → fonctions OpenCode (posture du prompt
+// système, cf. LIA_MODE_ADDENDA dans server.mjs). Les autres providers l'ignorent.
+const LIA_MODES = new Set(["manager", "tuteur", "expert"]);
+const normalizeLiaMode = (mode) => (LIA_MODES.has(mode) ? mode : "manager");
+
+// ── B5 : extraction JSON robuste — retire les éventuels blocs markdown
+// (```json … ```), prend du premier '{' au dernier '}' du texte, puis parse.
+// Renvoie null si le texte ne contient pas d'objet JSON parsable.
+function extractPlanJson(text) {
+  if (typeof text !== "string" || !text.trim()) return null;
+  const cleaned = text.replace(/```[a-zA-Z]*\s*([\s\S]*?)```/g, "$1");
+  const first = cleaned.indexOf("{");
+  const last = cleaned.lastIndexOf("}");
+  if (first === -1 || last <= first) return null;
+  try {
+    return JSON.parse(cleaned.slice(first, last + 1));
+  } catch {
+    return null;
+  }
+}
+
+// ── B5 : validation minimale — steps non vide et chaque step a un "name".
+function isValidPlan(plan) {
+  if (!plan || typeof plan !== "object" || Array.isArray(plan)) return false;
+  if (!Array.isArray(plan.steps) || plan.steps.length === 0) return false;
+  return plan.steps.every(
+    (s) =>
+      s &&
+      typeof s === "object" &&
+      typeof s.name === "string" &&
+      s.name.trim().length > 0,
+  );
+}
+
 // Generate a plan using LLM or smart fallback
 async function generatePlan(userMessage, ctx) {
   const { runAgenticLoop } = ctx;
   const lower = userMessage.toLowerCase();
 
-  // Try to get plan from LLM with plan-specific system prompt
-  try {
-    const planMessages = [
-      { role: "system", content: PLAN_SYSTEM },
-      { role: "user", content: userMessage },
-    ];
-    const result = await runAgenticLoop(planMessages, "claude-sonnet-4-6", {}, {
-      tools: false, // le plan reste single-pass — PAS de boucle d'outils
-    });
-    const text = result?.message || "";
-    // Try to parse JSON from response
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const plan = JSON.parse(jsonMatch[0]);
-      if (plan.steps?.length > 0) return plan;
+  // ── B5 : plan via LLM — sortie JSON stricte + extraction robuste.
+  // Réponse non valide → UNE seule tentative de correction (message
+  // utilisateur strict), puis repli mots-clés si échec persistant.
+  const planMessages = [
+    { role: "system", content: PLAN_SYSTEM },
+    { role: "user", content: userMessage },
+  ];
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const result = await runAgenticLoop(planMessages, "claude-sonnet-4-6", {}, {
+        tools: false, // le plan reste single-pass — PAS de boucle d'outils
+      });
+      const plan = extractPlanJson(result?.message || "");
+      if (isValidPlan(plan)) return plan;
+      if (attempt === 0) {
+        // Une seule relance avec un rappel strict du format attendu.
+        const prev = (result?.message || "").trim();
+        if (prev) planMessages.push({ role: "assistant", content: prev });
+        planMessages.push({
+          role: "user",
+          content:
+            "Ta réponse précédente n'était pas un JSON valide. Renvoie UNIQUEMENT l'objet JSON demandé, sans texte autour.",
+        });
+      }
+    } catch {
+      // Erreur API (pas un problème de format) → repli mots-clés directement.
+      break;
     }
-  } catch {
-    /* fallback to smart generation */
   }
 
   // ── Smart fallback: generate plan from keywords ─────────────────────────
@@ -492,8 +544,11 @@ export function register(router, ctx) {
           messages = [],
           model = "claude-sonnet-4-6",
           permissions = {},
+          mode, // C3 : "manager" (défaut) | "tuteur" | "expert"
         } = b;
-        const result = await runAgenticLoop(messages, model, permissions);
+        const result = await runAgenticLoop(messages, model, permissions, {
+          mode: normalizeLiaMode(mode),
+        });
         json(200, result);
       } catch (err) {
         json(500, { error: err.message });
@@ -510,7 +565,9 @@ export function register(router, ctx) {
         model = "claude-sonnet-4-6",
         permissions = {},
         executionMode = "auto",
+        mode, // C3 : accepté avec et sans plan (sans effet sur le plan lui-même)
       } = b;
+      const liaMode = normalizeLiaMode(mode);
       res.writeHead(200, {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
@@ -552,6 +609,7 @@ export function register(router, ctx) {
               model,
               permissions,
               res,
+              liaMode,
             );
             if (oc) {
               res.write(
@@ -561,14 +619,18 @@ export function register(router, ctx) {
                 })}\n\n`,
               );
             } else {
-              const result = await runAgenticLoop(messages, model, permissions);
+              const result = await runAgenticLoop(messages, model, permissions, {
+                mode: liaMode,
+              });
               await simulateStream(result?.message || "", res);
               res.write(
                 `data: ${JSON.stringify({ done: true, toolCalls: result?.toolCalls || [] })}\n\n`,
               );
             }
           } else {
-            const result = await runAgenticLoop(messages, model, permissions);
+            const result = await runAgenticLoop(messages, model, permissions, {
+              mode: liaMode,
+            });
             const text = result?.message || "";
             const toolCalls = result?.toolCalls || [];
             await simulateStream(text, res);

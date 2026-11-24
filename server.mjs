@@ -1176,6 +1176,30 @@ FORMAT DE RÉPONSE :
 - Markdown pour la mise en forme
 - Si chemin de fichier mentionné → utiliser list_directory ou read_file directement`;
 
+// ── C3 : modes de Lia — addendum de posture ajouté au prompt système ─────────
+// mode ∈ "manager" (défaut si absent/inconnu) | "tuteur" | "expert".
+// Le mode n'affecte que le chemin OpenCode (callOpenCodeLoop / streamOpenCode) ;
+// les autres providers conservent LIA_SYSTEM seul.
+const LIA_MODE_ADDENDA = {
+  manager:
+    "POSTURE MANAGER : analyse la demande de l'utilisateur. Quand c'est pertinent, propose un plan d'action et UTILISE les outils (create_task, create_project…) pour passer à l'action ; à la fin, résume clairement ce que tu as créé (IDs, noms).",
+  tuteur:
+    "POSTURE TUTEUR : explique de façon pédagogique, structurée, avec exemples concrets et étapes numérotées. Ne crée PAS de ressources (tâches/projets) sauf demande explicite de l'utilisateur. Termine par un conseil ou une question de vérification.",
+  expert:
+    "POSTURE EXPERT : réponse directe et technique. Va droit au but, pas de préambule, pas de reformulation de la question. Si une action outil est demandée, exécute-la immédiatement.",
+};
+
+// Prompt système du chemin OpenCode : LIA_SYSTEM + addendum de posture.
+// mode absent/inconnu → "manager". mode null → LIA_SYSTEM seul
+// (chemin plan, B5 : JSON strict sans incitation à l'action).
+function liaSystemFor(mode) {
+  if (mode === null) return LIA_SYSTEM;
+  const addendum = Object.hasOwn(LIA_MODE_ADDENDA, mode)
+    ? LIA_MODE_ADDENDA[mode]
+    : LIA_MODE_ADDENDA.manager;
+  return `${LIA_SYSTEM}\n\n${addendum}`;
+}
+
 const LIA_TOOLS = [
   {
     name: "list_tasks",
@@ -3606,13 +3630,14 @@ function summarizeLiaToolCalls(allToolCalls, errNote) {
 
 // Un round non streamé de la boucle : POST /chat/completions avec tools.
 // Renvoie {message, _toolCalls} si le modèle demande des outils, sinon {message}.
-async function callOpenCodeRound(messages, model, openaiTools) {
+// mode (C3) : posture du prompt système — cf. LIA_MODE_ADDENDA.
+async function callOpenCodeRound(messages, model, openaiTools, mode) {
   const key = openCodeKey();
   if (!key) return null;
   const body = {
     model: toOpenCodeModel(model),
     messages: [
-      { role: "system", content: LIA_SYSTEM },
+      { role: "system", content: liaSystemFor(mode) },
       ...openCodeLoopMessages(messages),
     ],
     max_tokens: 1500,
@@ -3650,9 +3675,12 @@ async function callOpenCodeRound(messages, model, openaiTools) {
 
 // Boucle d'outils OpenAI (jusqu'à 5 rounds). opts.tools === false → single-pass.
 // Renvoie {message, toolCalls} (cumul) ou null si aucune clé OpenCode.
+// opts.mode (C3) : posture de Lia — défaut "manager" si absent/inconnu ;
+// tools === false (chemin plan) → pas d'addendum, JSON strict.
 async function callOpenCodeLoop(messages, model, permissions, opts = {}) {
   const key = openCodeKey();
   if (!key) return null;
+  const mode = opts.tools === false ? null : opts.mode;
   const tools =
     opts.tools === false
       ? []
@@ -3663,7 +3691,7 @@ async function callOpenCodeLoop(messages, model, permissions, opts = {}) {
   for (let round = 0; round < 5; round++) {
     let r;
     try {
-      r = await callOpenCodeRound(currentMsgs, model, openaiTools);
+      r = await callOpenCodeRound(currentMsgs, model, openaiTools, mode);
     } catch (e) {
       if (allToolCalls.length) {
         return {
@@ -3739,7 +3767,8 @@ async function callOpenCode(messages, model) {
 // 2. quand un round ne demande plus d'outils, la réponse finale est streamée
 //    (stream: true + pipeOpenAIStream) SANS tools → texte garanti ;
 // 3. renvoie {toolCalls} (collectés) ou false si aucune clé.
-async function streamOpenCode(messages, model, permissions, res) {
+// mode (C3, défaut "manager" si absent) : posture de Lia — cf. LIA_MODE_ADDENDA.
+async function streamOpenCode(messages, model, permissions, res, mode) {
   const key = openCodeKey();
   if (!key) return false;
   const toolsToSend = LIA_TOOLS.filter(
@@ -3751,7 +3780,7 @@ async function streamOpenCode(messages, model, permissions, res) {
   try {
     // Étape 1 — rounds d'outils non streamés
     for (let round = 0; round < 5; round++) {
-      const r = await callOpenCodeRound(currentMsgs, model, openaiTools);
+      const r = await callOpenCodeRound(currentMsgs, model, openaiTools, mode);
       if (!r || !r._toolCalls) break; // plus d'outils demandés → réponse finale
       const toolResultMsgs = [];
       for (const tc of r._toolCalls) {
@@ -3797,7 +3826,7 @@ async function streamOpenCode(messages, model, permissions, res) {
         body: JSON.stringify({
           model: toOpenCodeModel(model),
           messages: [
-            { role: "system", content: LIA_SYSTEM },
+            { role: "system", content: liaSystemFor(mode) },
             ...openCodeLoopMessages(currentMsgs),
           ],
           max_tokens: 1500,
