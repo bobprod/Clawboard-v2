@@ -1,5 +1,6 @@
 // ─── Task Routes (CRUD + run + archives + logs SSE) ─────────────────────────
 import { createLogger } from '../src/lib/logger.mjs';
+import { generateText } from '../src/lib/llm.mjs';
 const log = createLogger("tasks");
 export function register(router, ctx) {
   const {
@@ -12,7 +13,22 @@ export function register(router, ctx) {
     getTaskById,
     broadcastTasks,
     invalidateTasksCache,
+    decryptKey,
   } = ctx;
+
+  // Résout une clé LLM : environnement d'abord, puis base chiffrée.
+  async function resolveLlmKey() {
+    if (process.env.OPENCODE_API_KEY) return process.env.OPENCODE_API_KEY;
+    try {
+      const { rows } = await pool.query(
+        "SELECT encrypted_value FROM api_keys WHERE provider IN ('opencode','opencode-go','opencode-zen') LIMIT 1",
+      );
+      const value = rows[0]?.encrypted_value;
+      return value && decryptKey ? decryptKey(value) : null;
+    } catch {
+      return null;
+    }
+  }
 
   // GET /api/tasks (SSE or JSON, with optional pagination)
   router.get("/api/tasks", async ({ req, url, json, sse }) => {
@@ -115,30 +131,61 @@ export function register(router, ctx) {
         await broadcastTasks();
         json(200, { ok: true });
         setTimeout(async () => {
-          try {
+          const doneNow = new Date().toISOString();
+          let statut = "completed";
+          let stdout = "";
+          let cost = 0;
+          let tokIn = 0;
+          let tokOut = 0;
+
+          const instructions = String(
+            task.instructions || task.titre || task.name || "",
+          ).trim();
+          const key = await resolveLlmKey();
+
+          if (key && instructions) {
+            try {
+              const r = await generateText({
+                key,
+                baseUrl: process.env.LLM_BASE_URL || "https://opencode.ai/inference/go/v1",
+                model: process.env.LLM_MODEL || "deepseek-v4.1-flash",
+                sessionHeader: "clawboard-llm",
+                messages: [
+                  { role: "system", content: "Tu es l'agent ClawBoard. Execute la tache demandee de facon utile et concise." },
+                  { role: "user", content: instructions },
+                ],
+              });
+              tokIn = r.promptTokens;
+              tokOut = r.completionTokens;
+              stdout = `✅ Tâche exécutée (${r.model})\n\n${r.text}`;
+            } catch (e) {
+              statut = "failed";
+              stdout = `❌ Erreur d'exécution : ${e.message}`;
+            }
+          } else {
+            // Aucune clé LLM : on marque clairement la simulation.
             const dur = Math.floor(Math.random() * 60 + 10);
-            const doneNow = new Date().toISOString();
-            const cost = Math.round(Math.random() * 0.5 * 10000) / 10000;
-            const tokIn = Math.floor(Math.random() * 50000 + 5000);
-            const tokOut = Math.floor(Math.random() * 2000 + 200);
-            const stdout = `✅ Tâche relancée manuellement\n\nDurée : ${dur}s\n\n## Résultat\nExécution complétée avec succès.`;
+            stdout = `⚠️ SIMULATION (aucune clé LLM configurée : OPENCODE_API_KEY)\n\nDurée : ${dur}s\n\n## Résultat\nExécution simulée.`;
+          }
+
+          try {
             await pool.query(
-              `UPDATE tasks SET statut='completed', updated_at=$2, cout=$3, tokens_in=$4, tokens_out=$5, completed_at=$2 WHERE id=$1`,
-              [task.id, doneNow, cost, tokIn, tokOut],
+              `UPDATE tasks SET statut=$2, updated_at=$3, cout=$4, tokens_in=$5, tokens_out=$6, completed_at=$3, resultat=$7, erreur=$8 WHERE id=$1`,
+              [task.id, statut, doneNow, cost, tokIn, tokOut, statut === "completed" ? stdout : null, statut === "failed" ? stdout : null],
             );
             await pool.query(
-              `UPDATE task_executions SET statut='completed', cout=$3, tokens_in=$4, tokens_out=$5, duration=$6, exit_code=0, stdout=$7 WHERE task_id=$1 AND started_at=$2`,
-              [task.id, now, cost, tokIn, tokOut, dur * 1000, stdout],
+              `UPDATE task_executions SET statut=$3, cout=$4, tokens_in=$5, tokens_out=$6, exit_code=$7, stdout=$8 WHERE task_id=$1 AND started_at=$2`,
+              [task.id, now, statut, cost, tokIn, tokOut, statut === "completed" ? 0 : 1, stdout],
             );
             await pool.query(
               `INSERT INTO task_activities (task_id, type, label, message, created_at) VALUES ($1,$2,$2,$3)`,
-              [task.id, `Exécution terminée en ${dur}s`, doneNow],
+              [task.id, statut === "completed" ? "Exécution terminée" : "Exécution échouée", doneNow],
             );
             await broadcastTasks();
           } catch (e) {
             log.error("Task run completion failed", { error: e.message });
           }
-        }, 3000);
+        }, 1000);
       })
       .catch((err) => json(500, { error: err.message }));
   });
