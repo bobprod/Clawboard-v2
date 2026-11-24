@@ -32,3 +32,6 @@ dist-ssr
 # Templates non suivis
 .env.txt
 .env.*.txt
+
+# Cache Python (verification worker STT)
+__pycache__/
