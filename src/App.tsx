@@ -20,7 +20,6 @@ import { TourGuide, resetTour } from "./components/TourGuide";
 import { LoginPage } from "./components/LoginPage";
 import { ToastProvider } from "./components/ToastProvider";
 import { PWAUpdateToast } from "./components/PWAUpdateToast";
-import { VoiceAssistant } from "./components/VoiceAssistant";
 
 interface ClawUser {
   username: string;
@@ -108,7 +107,6 @@ import {
   User,
   LogOut,
   Palette,
-  MessageSquare,
   MapIcon,
   Terminal,
   Menu,
@@ -568,8 +566,8 @@ const Sidebar = ({
           <h2>ClawBoard</h2>
         </div>
         <ul className="nav-links">
-          {/* ── AI CORE ── */}
-          <li className="nav-section-label">AI Core</li>
+          {/* ── TRAVAILLER ── */}
+          <li className="nav-section-label">Travailler</li>
           <NavLink to="/" icon={LayoutDashboard} tourId="nav-dashboard">
             Tableau de bord
           </NavLink>
@@ -579,14 +577,20 @@ const Sidebar = ({
           <NavLink to="/projects" icon={FolderKanban} tourId="nav-projects">
             Projets
           </NavLink>
-          <NavLink to="/agents" icon={Network} tourId="nav-agents">
-            Agents
+          <NavLink to="/agents?tab=cowork" icon={Layers} tourId="nav-cowork">
+            Cowork
           </NavLink>
 
-          {/* ── TRAVAIL ── */}
-          <li className="nav-section-label">Travail</li>
+          {/* ── CONNAÎTRE ── */}
+          <li className="nav-section-label">Connaître</li>
           <NavLink to="/memory" icon={BrainCircuit} tourId="nav-memory">
             Mémoire
+          </NavLink>
+
+          {/* ── ÉQUIPE ── */}
+          <li className="nav-section-label">Équipe</li>
+          <NavLink to="/agents" icon={Network} tourId="nav-agents">
+            Agents
           </NavLink>
           <NavLink
             to="/collaborations"
@@ -595,14 +599,14 @@ const Sidebar = ({
           >
             Collaborations
           </NavLink>
-          <NavLink to="/security" icon={ShieldCheck} tourId="nav-security">
-            Sécurité & Scan
-          </NavLink>
 
           {/* ── OUTILS ── */}
           <li className="nav-section-label">Outils</li>
           <NavLink to="/devtools" icon={Terminal}>
             Outils & Logs
+          </NavLink>
+          <NavLink to="/security" icon={ShieldCheck} tourId="nav-security">
+            Sécurité & Scan
           </NavLink>
         </ul>
         <div className="sidebar-footer">
@@ -797,12 +801,6 @@ const AppShell = ({
             {/* ── Quick-access buttons ─────────────────────────── */}
             {[
               {
-                to: "/chat",
-                icon: MessageSquare,
-                label: "Chat Lia",
-                color: "#8b5cf6",
-              },
-              {
                 to: "/workspace",
                 icon: HardDrive,
                 label: "Workspace",
@@ -813,12 +811,6 @@ const AppShell = ({
                 icon: Globe,
                 label: "Navigateur",
                 color: "#10b981",
-              },
-              {
-                to: "/agents?tab=cowork",
-                icon: Layers,
-                label: "Cowork",
-                color: "#f59e0b",
               },
             ].map((btn) => (
               <button
@@ -951,7 +943,6 @@ const AppShell = ({
         <PageContent />
       </main>
       <AgentChat pageContext={getPageContext(location.pathname)} />
-      <VoiceAssistant />
     </div>
   );
 };

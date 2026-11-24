@@ -8,15 +8,23 @@ import {
   ChevronDown,
   Wrench,
   X,
+  Mic,
+  Square,
 } from "lucide-react";
 import { useChatStream } from "../hooks/useChatStream";
+import { useVoiceRecorder } from "./VoiceAssistant";
+import { apiFetchJson } from "../lib/apiFetch";
 
 const AGENTS = ["main", "assistant", "research", "coder"];
+const API_BASE = "http://localhost:4000";
 
 export function AgentChat({ pageContext }: { pageContext?: string }) {
   const [open, setOpen] = useState(false);
   const [agent, setAgent] = useState("main");
   const [input, setInput] = useState("");
+  const voice = useVoiceRecorder();
+  const [transcribing, setTranscribing] = useState(false);
+  const [voiceNote, setVoiceNote] = useState<string | null>(null);
   const { messages, loading, send, clearMessages } = useChatStream();
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -24,6 +32,18 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Efface le petit message d'erreur vocale après quelques secondes.
+  useEffect(() => {
+    if (!voiceNote) return;
+    const t = window.setTimeout(() => setVoiceNote(null), 6000);
+    return () => window.clearTimeout(t);
+  }, [voiceNote]);
+
+  // Refermer le panneau coupe tout enregistrement micro en cours.
+  useEffect(() => {
+    if (!open && voice.recording) void voice.stop();
+  }, [open, voice.recording, voice.stop]);
 
   const sendMessage = async () => {
     const text = input.trim();
@@ -38,6 +58,57 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
       e.preventDefault();
       sendMessage();
     }
+  };
+
+  // Micro intégré : 1er clic = enregistrement, 2e clic = stop + transcription.
+  const handleMic = async () => {
+    if (voice.recording) {
+      setVoiceNote(null);
+      setTranscribing(true);
+      try {
+        const audio = await voice.stop();
+        if (!audio) {
+          setVoiceNote("Aucun son capturé. Réessaie.");
+          return;
+        }
+        const { data, error } = await apiFetchJson<{ text?: string }>(
+          `${API_BASE}/api/stt`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              audio: audio.base64,
+              mimeType: audio.mimeType,
+              provider: "local",
+              lang: "fr",
+            }),
+          },
+        );
+        if (error || !data) {
+          setVoiceNote(
+            `Transcription impossible : ${error ?? "réponse invalide"}`,
+          );
+          return;
+        }
+        const text = (data.text || "").trim();
+        if (!text) {
+          setVoiceNote(
+            "Transcription vide. Réessaie en parlant un peu plus fort.",
+          );
+          return;
+        }
+        // Champ déjà rempli → on ajoute à la suite avec un espace.
+        setInput((prev) => (prev.trim() ? `${prev.trimEnd()} ${text}` : text));
+        inputRef.current?.focus();
+      } catch {
+        setVoiceNote("Transcription échouée. Réessaie.");
+      } finally {
+        setTranscribing(false);
+      }
+      return;
+    }
+    setVoiceNote(null);
+    await voice.start();
   };
 
   return (
@@ -351,70 +422,154 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
               padding: "10px 14px",
               borderTop: "1px solid var(--border-subtle)",
               display: "flex",
+              flexDirection: "column",
               gap: 8,
-              alignItems: "flex-end",
             }}
           >
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKey}
-              rows={1}
-              placeholder={`Message à ${agent}… (Entrée pour envoyer)`}
-              disabled={loading}
-              style={{
-                flex: 1,
-                padding: "9px 12px",
-                borderRadius: 10,
-                resize: "none",
-                background: "var(--bg-glass)",
-                border: "1px solid var(--border-subtle)",
-                color: "var(--text-primary)",
-                fontSize: "13px",
-                outline: "none",
-                fontFamily: "inherit",
-                lineHeight: 1.45,
-                maxHeight: 120,
-                transition: "border-color 0.2s",
-              }}
-              onFocus={(e) =>
-                (e.target.style.borderColor = "var(--brand-accent)")
-              }
-              onBlur={(e) =>
-                (e.target.style.borderColor = "var(--border-subtle)")
-              }
-            />
-            <button
-              onClick={sendMessage}
-              disabled={!input.trim() || loading}
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 10,
-                border: "none",
-                cursor: input.trim() && !loading ? "pointer" : "not-allowed",
-                background:
-                  input.trim() && !loading
-                    ? "var(--brand-accent)"
+            {/* Indicateur micro : enregistrement / transcription / erreur discrète */}
+            {(voice.recording || transcribing || (voiceNote ?? voice.error)) && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: "12px",
+                  lineHeight: 1.4,
+                  color:
+                    transcribing && !voice.recording
+                      ? "var(--text-muted)"
+                      : "var(--status-error)",
+                }}
+              >
+                {voice.recording ? (
+                  <>
+                    <span
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        background: "var(--status-error)",
+                        animation: "pulseDot 1.2s ease-in-out infinite",
+                        flexShrink: 0,
+                      }}
+                    />
+                    Enregistrement…
+                  </>
+                ) : transcribing ? (
+                  <>
+                    <Loader2
+                      size={12}
+                      style={{ animation: "spin 1s linear infinite" }}
+                    />
+                    Transcription…
+                  </>
+                ) : (
+                  <>{voiceNote ?? voice.error}</>
+                )}
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKey}
+                rows={1}
+                placeholder={`Message à ${agent}… (Entrée pour envoyer)`}
+                disabled={loading}
+                style={{
+                  flex: 1,
+                  padding: "9px 12px",
+                  borderRadius: 10,
+                  resize: "none",
+                  background: "var(--bg-glass)",
+                  border: "1px solid var(--border-subtle)",
+                  color: "var(--text-primary)",
+                  fontSize: "13px",
+                  outline: "none",
+                  fontFamily: "inherit",
+                  lineHeight: 1.45,
+                  maxHeight: 120,
+                  transition: "border-color 0.2s",
+                }}
+                onFocus={(e) =>
+                  (e.target.style.borderColor = "var(--brand-accent)")
+                }
+                onBlur={(e) =>
+                  (e.target.style.borderColor = "var(--border-subtle)")
+                }
+              />
+              <button
+                onClick={handleMic}
+                disabled={voice.starting || transcribing}
+                title={
+                  voice.recording
+                    ? "Arrêter l'enregistrement et transcrire"
+                    : "Dicter un message au micro"
+                }
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 10,
+                  border: "none",
+                  cursor:
+                    voice.starting || transcribing ? "not-allowed" : "pointer",
+                  background: voice.recording
+                    ? "var(--status-error)"
                     : "rgba(255,255,255,0.06)",
-                color: input.trim() && !loading ? "#fff" : "var(--text-muted)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-                transition: "all 0.2s",
-              }}
-            >
-              {loading ? (
-                <Loader2
-                  size={15}
-                  style={{ animation: "spin 1s linear infinite" }}
-                />
-              ) : (
-                <Send size={15} />
-              )}
-            </button>
+                  color: voice.recording ? "#fff" : "var(--text-secondary)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  boxShadow: voice.recording
+                    ? "0 0 14px rgba(239,68,68,0.4)"
+                    : "none",
+                  transition: "all 0.2s",
+                }}
+              >
+                {voice.starting ? (
+                  <Loader2
+                    size={15}
+                    style={{ animation: "spin 1s linear infinite" }}
+                  />
+                ) : voice.recording ? (
+                  <Square size={12} fill="currentColor" />
+                ) : (
+                  <Mic size={15} />
+                )}
+              </button>
+              <button
+                onClick={sendMessage}
+                disabled={!input.trim() || loading}
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 10,
+                  border: "none",
+                  cursor: input.trim() && !loading ? "pointer" : "not-allowed",
+                  background:
+                    input.trim() && !loading
+                      ? "var(--brand-accent)"
+                      : "rgba(255,255,255,0.06)",
+                  color: input.trim() && !loading ? "#fff" : "var(--text-muted)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  transition: "all 0.2s",
+                }}
+              >
+                {loading ? (
+                  <Loader2
+                    size={15}
+                    style={{ animation: "spin 1s linear infinite" }}
+                  />
+                ) : (
+                  <Send size={15} />
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -425,6 +580,10 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
           to   { transform: none; opacity: 1; }
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulseDot {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.4; transform: scale(0.7); }
+        }
       `}</style>
     </>
   );
