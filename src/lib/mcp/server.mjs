@@ -106,6 +106,21 @@ const MCP_TOOLS = [
     },
   },
   {
+    name: "observe_screen",
+    description:
+      "Capture l'ecran et repond a une question visuelle (verification de ce qui est affiche). " +
+      "A utiliser UNIQUEMENT quand l'utilisateur demande explicitement de verifier, confirmer ou regarder l'ecran. " +
+      "Retourne { ok, raison, details, capture }.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        question: { type: "string", description: "Question visuelle, ex: 'Le clip est-il sur la piste Bass ?'" },
+        model: { type: "string", description: "Modele vision (optionnel, defaut gemini-2.5-flash)" },
+      },
+      required: ["question"],
+    },
+  },
+  {
     name: "memory_search",
     description: "Search agent memory (MEMORY.md, NOTES.md, task activities)",
     inputSchema: {
@@ -280,6 +295,17 @@ async function executeMcpTool(name, args, ctx) {
           },
         );
       });
+    }
+
+    case "observe_screen": {
+      const port = process.env.PORT || 4000;
+      const res = await fetch(`http://127.0.0.1:${port}/api/computer-use/observe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: args.question, model: args.model }),
+      });
+      const data = await res.json().catch(() => ({}));
+      return { status: res.status, ...data };
     }
 
     case "memory_search": {
