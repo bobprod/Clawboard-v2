@@ -46,6 +46,8 @@ export function VoiceAssistant() {
   const [muted, setMuted] = useState(false);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [micState, setMicState] = useState<"unknown" | "granted" | "denied" | "prompt">("unknown");
 
   const recognitionRef = useRef<any>(null);
   const finalTextRef = useRef("");
@@ -255,9 +257,36 @@ export function VoiceAssistant() {
     };
   }, [handleCommand, speak]);
 
+  // Etat de la permission micro (pour afficher une aide claire)
+  useEffect(() => {
+    let cancelled = false;
+    const check = async () => {
+      try {
+        const perms = (navigator as any).permissions;
+        if (!perms?.query) return;
+        const status = await perms.query({ name: "microphone" });
+        if (!cancelled) setMicState(status.state);
+        status.onchange = () => setMicState(status.state);
+      } catch {
+        /* permission API indisponible */
+      }
+    };
+    void check();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const toggleListening = () => {
+    setOpen(true);
     const recognition = recognitionRef.current;
-    if (!recognition) return;
+    if (!recognition) {
+      setReply(
+        "Reconnaissance vocale indisponible dans ce navigateur. Utilise Chrome ou Edge, ou tape ta commande ci-dessous.",
+      );
+      setOpen(true);
+      return;
+    }
     if (listening) {
       recognition.stop();
       return;
@@ -265,8 +294,18 @@ export function VoiceAssistant() {
     try {
       window.speechSynthesis?.cancel();
       recognition.start();
-    } catch {
-      answer("Impossible de demarrer le micro.");
+    } catch (err: any) {
+      try {
+        recognition.stop();
+        recognition.start();
+        return;
+      } catch {
+        /* ignore */
+      }
+      const name = err?.name || "erreur";
+      answer(
+        `Impossible de demarrer le micro (${name}). Ouvre cette page dans Chrome ou Edge, autorise le micro, ou tape ta commande ci-dessous.`,
+      );
     }
   };
 
@@ -332,11 +371,59 @@ export function VoiceAssistant() {
             </div>
           )}
 
-          {!supported && (
-            <p style={{ margin: "8px 0 0", fontSize: "0.78rem", color: "#f59e0b" }}>
-              Reconnaissance vocale indisponible dans ce navigateur. Utilise Chrome ou Edge.
+          {(micState === "denied" || !supported) && (
+            <p style={{ margin: "8px 0 0", fontSize: "0.78rem", color: "#f59e0b", lineHeight: 1.5 }}>
+              {supported
+                ? "Le micro est bloqué dans ce navigateur. Ouvre la page dans Chrome ou Edge, ou tape ta commande ci-dessous."
+                : "Reconnaissance vocale indisponible dans ce navigateur. Tape ta commande ci-dessous."}
             </p>
           )}
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const value = draft.trim();
+              if (!value) return;
+              setDraft("");
+              setTranscript(value);
+              void handleCommand(value);
+            }}
+            style={{ display: "flex", gap: "6px", marginTop: "10px" }}
+          >
+            <input
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="Écris une commande…"
+              aria-label="Commande écrite"
+              style={{
+                flex: 1,
+                minWidth: 0,
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid var(--border-subtle, rgba(255,255,255,0.15))",
+                borderRadius: "10px",
+                padding: "8px 10px",
+                color: "var(--text-primary, #fff)",
+                fontSize: "0.82rem",
+                outline: "none",
+              }}
+            />
+            <button
+              type="submit"
+              aria-label="Envoyer la commande"
+              style={{
+                border: "none",
+                borderRadius: "10px",
+                padding: "8px 12px",
+                background: "linear-gradient(135deg,#8b5cf6,#6366f1)",
+                color: "#fff",
+                fontSize: "0.82rem",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Envoyer
+            </button>
+          </form>
         </div>
       )}
 
