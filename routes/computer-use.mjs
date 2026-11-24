@@ -11,8 +11,9 @@
 
 import { randomUUID } from "node:crypto";
 import { execFile, spawn } from "node:child_process";
-import { readFile, writeFile, readdir, stat, mkdir } from "node:fs/promises";
+import { readFile, writeFile, readdir, stat, mkdir, appendFile } from "node:fs/promises";
 import path from "node:path";
+import { homedir } from "node:os";
 
 // ─── In-memory stores ────────────────────────────────────────────────────────
 const sessions = new Map(); // cowork sessions
@@ -1094,6 +1095,49 @@ function isHighRiskAction(toolName, input) {
 // ─── Route Registration ─────────────────────────────────────────────────────
 
 export function register(router, ctx) {
+  // ── CU-0 : sécurité (auth optionnelle, kill switch, audit, limites) ──────
+  const SECRET = ctx?.SECRET || process.env.CLAWBOARD_SECRET || "";
+  const MAX_ACTIONS = 100;
+  const MAX_SESSION_MS = 30 * 60 * 1000;
+  const AUDIT_DIR = path.join(homedir(), ".clawboard", "audit");
+
+  let halted = false;
+  let activeSince = null;
+  let actionCount = 0;
+
+  async function audit(entry) {
+    try {
+      await mkdir(AUDIT_DIR, { recursive: true });
+      const file = path.join(AUDIT_DIR, `computer-use-${new Date().toISOString().slice(0, 10)}.jsonl`);
+      await appendFile(file, JSON.stringify({ ts: new Date().toISOString(), ...entry }) + "\n", "utf8");
+    } catch {
+      /* audit best-effort */
+    }
+  }
+
+  function guard(req) {
+    if (SECRET) {
+      const auth = req?.headers?.authorization || "";
+      if (auth !== `Bearer ${SECRET}`) {
+        return { status: 401, error: "Non autorise : CLAWBOARD_SECRET requis" };
+      }
+    }
+    if (halted) {
+      return { status: 503, error: "Computer use arrete (kill switch). POST /api/computer-use/resume pour reprendre." };
+    }
+    if (activeSince && Date.now() - activeSince > MAX_SESSION_MS) {
+      halted = true;
+      activeSince = null;
+      actionCount = 0;
+      return { status: 403, error: "Session expiree (30 min)." };
+    }
+    if (actionCount >= MAX_ACTIONS) {
+      halted = true;
+      return { status: 429, error: `Limite de ${MAX_ACTIONS} actions atteinte.` };
+    }
+    return null;
+  }
+
   // ── Computer Use: Environment ──────────────────────────────────────────
 
   // GET /api/computer-use/status — check if computer use is available
@@ -1120,13 +1164,20 @@ export function register(router, ctx) {
   });
 
   // POST /api/computer-use/action — execute a single computer action
-  router.post("/api/computer-use/action", async ({ body, json }) => {
+  router.post("/api/computer-use/action", async ({ body, json, req }) => {
+    const g = guard(req);
+    if (g) {
+      await audit({ event: "blocked", reason: g.error });
+      return json(g.status, { error: g.error });
+    }
     body(async (parsed) => {
       const { action, params: actionParams } = parsed;
       const handler = computerActions[action];
       if (!handler) {
         return json(400, { error: `Action inconnue: ${action}` });
       }
+      if (!activeSince) activeSince = Date.now();
+      actionCount++;
       try {
         const result = await handler({}, actionParams || {});
         logAction("direct", "computer_action", {
@@ -1134,22 +1185,57 @@ export function register(router, ctx) {
           params: actionParams,
           result: JSON.stringify(result).slice(0, 200),
         });
+        await audit({ event: "action", action, ok: true });
         json(200, result);
       } catch (err) {
+        await audit({ event: "action", action, ok: false, error: err.message });
         json(500, { error: err.message });
       }
     });
   });
 
   // GET /api/computer-use/screenshot — take a quick screenshot
-  router.get("/api/computer-use/screenshot", async ({ json }) => {
+  router.get("/api/computer-use/screenshot", async ({ json, req }) => {
+    const g = guard(req);
+    if (g) return json(g.status, { error: g.error });
     try {
       const result = await computerActions.screenshot({});
+      await audit({ event: "screenshot", ok: true });
       json(200, result);
     } catch (err) {
+      await audit({ event: "screenshot", ok: false, error: err.message });
       json(500, { error: err.message });
     }
   });
+
+  // ── CU-0 : contrôle ─────────────────────────────────────────────────────
+  router.post("/api/computer-use/stop", ({ json }) => {
+    halted = true;
+    activeSince = null;
+    actionCount = 0;
+    void audit({ event: "stop" });
+    json(200, { halted: true });
+  });
+
+  router.post("/api/computer-use/resume", ({ json }) => {
+    halted = false;
+    activeSince = null;
+    actionCount = 0;
+    void audit({ event: "resume" });
+    json(200, { halted: false });
+  });
+
+  router.get("/api/computer-use/security", ({ json }) =>
+    json(200, {
+      authRequired: Boolean(SECRET),
+      halted,
+      actionsUsed: actionCount,
+      maxActions: MAX_ACTIONS,
+      sessionMaxMinutes: 30,
+      activeSince,
+      auditDir: AUDIT_DIR,
+    }),
+  );
 
   // ── Cowork Sessions ───────────────────────────────────────────────────
 
