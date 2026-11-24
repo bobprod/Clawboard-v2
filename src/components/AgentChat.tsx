@@ -11,13 +11,82 @@ import {
   Mic,
   Square,
   Paperclip,
+  Map,
+  Briefcase,
+  GraduationCap,
+  AlertTriangle,
+  CheckCircle2,
+  Ban,
 } from "lucide-react";
-import { useChatStream } from "../hooks/useChatStream";
+import { useChatStream, type StreamMessage } from "../hooks/useChatStream";
 import { useVoiceRecorder } from "./VoiceAssistant";
-import { apiFetchJson } from "../lib/apiFetch";
+import { apiFetch, apiFetchJson } from "../lib/apiFetch";
+import type { LiaPlan } from "./LiaPlanPreview";
 
 const AGENTS = ["main", "assistant", "research", "coder"];
 const API_BASE = "http://localhost:4000";
+
+// ── Modes de Lia (C3) ─────────────────────────────────────────────────────────
+// manager = propose des plans et crée des tâches, tuteur = explique et enseigne,
+// expert = direct et technique. Choix persisté en localStorage et envoyé au
+// backend dans le body de /api/chat et /api/chat/stream (champ `mode`).
+const LIA_MODES = [
+  {
+    id: "manager",
+    label: "Manager",
+    icon: Briefcase,
+    hint: "Propose des plans et crée des tâches",
+  },
+  {
+    id: "tuteur",
+    label: "Tuteur",
+    icon: GraduationCap,
+    hint: "Explique et enseigne",
+  },
+  {
+    id: "expert",
+    label: "Expert",
+    icon: Wrench,
+    hint: "Direct et technique",
+  },
+] as const;
+type LiaMode = (typeof LIA_MODES)[number]["id"];
+const LIA_MODE_STORAGE_KEY = "clawboard-lia-mode";
+
+// ── Plans d'exécution (B5) ────────────────────────────────────────────────────
+type PlanStatus = "pending" | "executing" | "executed" | "rejected";
+/** Carte de plan affichée dans le fil, rattachée à un message assistant. */
+type PlanCard = { id: string; msgId: string; plan: LiaPlan; status: PlanStatus };
+
+interface PlanExecuteResult {
+  stepId?: string;
+  type?: string;
+  resourceId?: string;
+  name?: string;
+  ok: boolean;
+  error?: string;
+}
+interface PlanExecuteResponse {
+  ok?: boolean;
+  created?: number;
+  failed?: number;
+  results?: PlanExecuteResult[];
+}
+
+/** Badges d'étape : task=violet, modele=bleu, cron=orange, skill=vert, note=gris. */
+const STEP_TYPE_META: Record<string, { color: string; label: string }> = {
+  task: { color: "#8b5cf6", label: "Tâche" },
+  modele: { color: "#3b82f6", label: "Modèle" },
+  cron: { color: "#f59e0b", label: "Récurrence" },
+  skill: { color: "#10b981", label: "Skill" },
+  note: { color: "#9ca3af", label: "Note" },
+};
+
+const shortenLine = (s: string, max: number) =>
+  s.length > max ? `${s.slice(0, max)}…` : s;
+
+let localCounter = 0;
+const localId = (prefix: string) => `${prefix}-${++localCounter}-${Date.now()}`;
 
 // ── Pièces jointes ───────────────────────────────────────────────────────────
 // Fichiers texte lus côté client (contenu injecté dans le message envoyé).
@@ -74,17 +143,33 @@ const sizeKo = (bytes: number) => `${Math.max(1, Math.round(bytes / 1024))} Ko`;
 export function AgentChat({ pageContext }: { pageContext?: string }) {
   const [open, setOpen] = useState(false);
   const [agent, setAgent] = useState("main");
+  // Mode de Lia (C3) — persisté en localStorage (clé clawboard-lia-mode).
+  const [mode, setMode] = useState<LiaMode>(() => {
+    try {
+      const saved = localStorage.getItem(LIA_MODE_STORAGE_KEY);
+      if (saved === "tuteur" || saved === "expert") return saved;
+    } catch {
+      /* localStorage indisponible → manager par défaut */
+    }
+    return "manager";
+  });
   const [input, setInput] = useState("");
   const voice = useVoiceRecorder();
   const [transcribing, setTranscribing] = useState(false);
   const [voiceNote, setVoiceNote] = useState<string | null>(null);
-  const { messages, loading, send, clearMessages } = useChatStream();
+  const { messages, loading, send, clearMessages, setMessages } =
+    useChatStream();
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [fileNote, setFileNote] = useState<string | null>(null);
+  // ── Plans (B5) : bouton Map armé, cartes de plan, erreurs discrètes ──
+  const [planArmed, setPlanArmed] = useState(false);
+  const [plans, setPlans] = useState<PlanCard[]>([]);
+  const [planLoading, setPlanLoading] = useState(false);
+  const [planNote, setPlanNote] = useState<string | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -104,6 +189,22 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
     return () => window.clearTimeout(t);
   }, [fileNote]);
 
+  // Persistance du mode de Lia (C3) dans localStorage.
+  useEffect(() => {
+    try {
+      localStorage.setItem(LIA_MODE_STORAGE_KEY, mode);
+    } catch {
+      /* silencieux */
+    }
+  }, [mode]);
+
+  // Idem pour les messages discrets liés aux plans (exécution, réseau…).
+  useEffect(() => {
+    if (!planNote) return;
+    const t = window.setTimeout(() => setPlanNote(null), 6000);
+    return () => window.clearTimeout(t);
+  }, [planNote]);
+
   // Refermer le panneau coupe tout enregistrement micro en cours.
   useEffect(() => {
     if (!open && voice.recording) void voice.stop();
@@ -113,15 +214,218 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
   const uploadPending = attachedFiles.some(
     (f) => f.kind === "binary" && f.status === "uploading",
   );
+  // Envoi en cours = stream normal (hook) OU génération de plan (B5, local).
+  const busy = loading || planLoading;
   // Envoi possible dès qu'il y a du texte OU au moins une pièce jointe valide.
   const canSend =
     (input.trim().length > 0 || attachedFiles.length > 0) &&
-    !loading &&
+    !busy &&
     !uploadPending;
+
+  /**
+   * Envoi en mode plan (B5) : POST /api/chat/stream avec executionMode:"plan".
+   * Le SSE émet des {token}, un événement spécial {"plan":{…}} puis {done:true}.
+   * Le plan reçu est affiché en carte rattachée au message assistant en cours.
+   */
+  const sendPlanMessage = async (text: string) => {
+    const assistantId = localId("ac-msg");
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: localId("ac-msg"),
+        role: "user",
+        content: text,
+        done: true,
+        ts: new Date(),
+      } satisfies StreamMessage,
+      {
+        id: assistantId,
+        role: "assistant",
+        content: "",
+        done: false,
+        ts: new Date(),
+        toolCalls: [],
+      } satisfies StreamMessage,
+    ]);
+    setPlanLoading(true);
+
+    // Historique identique à celui du hook : messages non-tool + ce message.
+    const history = [
+      ...messages
+        .filter((m) => m.role !== "tool")
+        .map((m) => ({ role: m.role, content: m.content })),
+      { role: "user", content: text },
+    ];
+
+    try {
+      const res = await apiFetch(`${API_BASE}/api/chat/stream`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: history,
+          mode, // C3 — mode de Lia : manager | tuteur | expert
+          executionMode: "plan", // B5 — le backend répond par un plan SSE
+          permissions: {},
+          agent,
+          preInstructions: pageContext,
+        }),
+      });
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      let accum = "";
+      let gotPlan = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data:")) continue; // ignore ":ok", commentaires
+          const raw = line.slice(5).trim();
+          if (!raw || raw === "[DONE]") continue;
+          try {
+            const evt = JSON.parse(raw) as {
+              token?: string;
+              plan?: LiaPlan;
+              done?: boolean;
+            };
+            if (typeof evt.token === "string") {
+              accum += evt.token;
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantId ? { ...m, content: accum } : m,
+                ),
+              );
+            }
+            if (evt.plan && Array.isArray(evt.plan.steps)) {
+              gotPlan = true;
+              const received: LiaPlan = evt.plan;
+              setPlans((prev) => [
+                ...prev,
+                {
+                  id: localId("plan"),
+                  msgId: assistantId,
+                  plan: received,
+                  status: "pending",
+                },
+              ]);
+            }
+            // {done:true, toolCalls:[]} en mode plan : rien à extraire.
+          } catch {
+            /* ligne SSE malformée — on ignore */
+          }
+        }
+      }
+      setMessages((prev) =>
+        prev.map((m) => (m.id === assistantId ? { ...m, done: true } : m)),
+      );
+      if (!gotPlan) {
+        setPlanNote(
+          "Aucun plan reçu du serveur — réessaie ou envoie un message normal.",
+        );
+      }
+    } catch (err) {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantId
+            ? {
+                ...m,
+                content: `⚠️ Erreur : ${err instanceof Error ? err.message : "impossible de joindre l'agent"}`,
+                done: true,
+              }
+            : m,
+        ),
+      );
+    } finally {
+      setPlanLoading(false);
+    }
+  };
+
+  /** « ✅ Approuver et exécuter » : POST /api/chat/plan/execute avec {steps}. */
+  const approvePlan = async (cardId: string) => {
+    const card = plans.find((p) => p.id === cardId);
+    if (!card || card.status !== "pending") return;
+    setPlans((prev) =>
+      prev.map((c) => (c.id === cardId ? { ...c, status: "executing" } : c)),
+    );
+    const { data, error } = await apiFetchJson<PlanExecuteResponse>(
+      `${API_BASE}/api/chat/plan/execute`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ steps: card.plan.steps }),
+      },
+    );
+    if (error || !data) {
+      // Erreur réseau/serveur → message discret, la carte reste actionnable.
+      setPlans((prev) =>
+        prev.map((c) => (c.id === cardId ? { ...c, status: "pending" } : c)),
+      );
+      setPlanNote(
+        `Exécution du plan impossible : ${error ?? "réponse invalide"}`,
+      );
+      return;
+    }
+    // Récapitulatif construit à partir de results (succès ET échecs).
+    const results = data.results ?? [];
+    const okResults = results.filter((r) => r.ok);
+    const failedResults = results.filter((r) => !r.ok);
+    const lines: string[] = [];
+    if (okResults.length > 0) {
+      lines.push(
+        `✅ ${data.created ?? okResults.length} élément(s) créé(s) :`,
+      );
+      for (const r of okResults) {
+        const label =
+          STEP_TYPE_META[r.type ?? "task"]?.label.toLowerCase() ?? "élément";
+        lines.push(
+          `• ${label} « ${r.name ?? r.stepId ?? "?"} » → ${r.resourceId ?? "?"}`,
+        );
+      }
+    } else {
+      lines.push("⚠️ Aucun élément n'a pu être créé.");
+    }
+    for (const r of failedResults) {
+      const label =
+        STEP_TYPE_META[r.type ?? "task"]?.label.toLowerCase() ?? "étape";
+      lines.push(
+        `❌ ${label} « ${r.name ?? r.stepId ?? "?"} » : ${r.error ?? "erreur inconnue"}`,
+      );
+    }
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: localId("ac-msg"),
+        role: "assistant",
+        content: lines.join("\n"),
+        done: true,
+        ts: new Date(),
+      } satisfies StreamMessage,
+    ]);
+    setPlans((prev) =>
+      prev.map((c) => (c.id === cardId ? { ...c, status: "executed" } : c)),
+    );
+  };
+
+  /** « Rejeter » : la carte passe en état rejetée (grisée, désactivée). */
+  const rejectPlan = (cardId: string) => {
+    setPlans((prev) =>
+      prev.map((c) =>
+        c.id === cardId && c.status === "pending"
+          ? { ...c, status: "rejected" }
+          : c,
+      ),
+    );
+  };
 
   const sendMessage = async () => {
     const typed = input.trim();
-    if (loading) return;
+    if (busy) return;
     if (uploadPending) {
       setFileNote(
         "Enregistrement des fichiers en cours, réessaie dans un instant.",
@@ -157,7 +461,14 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
 
     setInput("");
     setAttachedFiles([]);
-    await send({ text, agent, preInstructions: pageContext });
+    if (planArmed) {
+      // Bouton Plan (B5) : on consomme l'état armé — ce message part en mode plan.
+      setPlanArmed(false);
+      await sendPlanMessage(text);
+    } else {
+      // Mode de Lia (C3) : transite dans le body du /api/chat (champ `mode`).
+      await send({ text, agent, mode, preInstructions: pageContext });
+    }
     inputRef.current?.focus();
   };
 
@@ -461,6 +772,47 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
             <span style={{ fontWeight: 700, fontSize: "14px", flex: 1 }}>
               Chat Agent
             </span>
+            {/* Sélecteur de mode de Lia (C3) : Manager / Tuteur / Expert */}
+            <div
+              style={{
+                display: "flex",
+                gap: 2,
+                padding: 2,
+                borderRadius: 8,
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid var(--border-subtle)",
+              }}
+            >
+              {LIA_MODES.map((m) => {
+                const active = mode === m.id;
+                const ModeIcon = m.icon;
+                return (
+                  <button
+                    key={m.id}
+                    onClick={() => setMode(m.id)}
+                    title={`${m.label} — ${m.hint}`}
+                    aria-label={`Mode ${m.label} : ${m.hint}`}
+                    style={{
+                      width: 26,
+                      height: 24,
+                      borderRadius: 6,
+                      border: "none",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: active
+                        ? "var(--brand-accent)"
+                        : "transparent",
+                      color: active ? "#fff" : "var(--text-muted)",
+                      transition: "all 0.2s",
+                    }}
+                  >
+                    <ModeIcon size={13} />
+                  </button>
+                );
+              })}
+            </div>
             {/* Agent selector */}
             <select
               value={agent}
@@ -485,7 +837,10 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
             </select>
             {messages.length > 0 && (
               <button
-                onClick={() => clearMessages()}
+                onClick={() => {
+                  clearMessages();
+                  setPlans([]); // les cartes de plan suivent la conversation
+                }}
                 title="Effacer la conversation"
                 style={{
                   background: "none",
@@ -667,6 +1022,17 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
                         ))}
                     </div>
                   )}
+                  {/* Carte de plan (B5) rattachée à ce message assistant */}
+                  {plans
+                    .filter((p) => p.msgId === msg.id)
+                    .map((card) => (
+                      <PlanCardView
+                        key={card.id}
+                        card={card}
+                        onApprove={(id) => void approvePlan(id)}
+                        onReject={rejectPlan}
+                      />
+                    ))}
                 </div>
               </div>
             ))}
@@ -735,6 +1101,36 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
                 }}
               >
                 {fileNote}
+              </div>
+            )}
+            {/* Indicateur mode Plan armé (B5) : le prochain envoi génèrera un plan */}
+            {planArmed && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: "12px",
+                  lineHeight: 1.4,
+                  fontWeight: 600,
+                  color: "var(--brand-accent)",
+                }}
+              >
+                <Map size={12} />
+                Mode Plan armé — le prochain message générera un plan
+                d'exécution
+              </div>
+            )}
+            {/* Message discret lié aux plans (exécution impossible, réseau…) */}
+            {planNote && (
+              <div
+                style={{
+                  fontSize: "12px",
+                  lineHeight: 1.4,
+                  color: "var(--status-error)",
+                }}
+              >
+                {planNote}
               </div>
             )}
             {/* Chips des pièces jointes : nom + taille + ✕ pour retirer */}
@@ -831,7 +1227,7 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
                 onKeyDown={handleKey}
                 rows={1}
                 placeholder={`Message à ${agent}… (Entrée pour envoyer)`}
-                disabled={loading}
+                disabled={busy}
                 style={{
                   flex: 1,
                   padding: "9px 12px",
@@ -874,6 +1270,38 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
                 }}
               >
                 <Paperclip size={15} />
+              </button>
+              {/* Bouton Plan (B5) : arme le prochain envoi en mode plan */}
+              <button
+                onClick={() => setPlanArmed((v) => !v)}
+                title={
+                  planArmed
+                    ? "Mode Plan armé : le prochain message générera un plan (cliquer pour annuler)"
+                    : "Générer un plan d'exécution au prochain envoi"
+                }
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 10,
+                  border: planArmed ? "1px solid var(--brand-accent)" : "none",
+                  cursor: "pointer",
+                  background: planArmed
+                    ? "rgba(139,92,246,0.22)"
+                    : "rgba(255,255,255,0.06)",
+                  color: planArmed
+                    ? "var(--brand-accent)"
+                    : "var(--text-secondary)",
+                  boxShadow: planArmed
+                    ? "0 0 12px rgba(139,92,246,0.35)"
+                    : "none",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  transition: "all 0.2s",
+                }}
+              >
+                <Map size={15} />
               </button>
               <button
                 onClick={handleMic}
@@ -935,7 +1363,7 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
                   transition: "all 0.2s",
                 }}
               >
-                {loading ? (
+                {busy ? (
                   <Loader2
                     size={15}
                     style={{ animation: "spin 1s linear infinite" }}
@@ -961,5 +1389,262 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
         }
       `}</style>
     </>
+  );
+}
+
+// ── Carte de plan (B5) ─────────────────────────────────────────────────────────
+
+/**
+ * Carte de plan affichée dans le fil de conversation (bord accent brand).
+ * États : pending (boutons) → executing (spinner) → executed | rejected
+ * (grisée, désactivée).
+ */
+function PlanCardView({
+  card,
+  onApprove,
+  onReject,
+}: {
+  card: PlanCard;
+  onApprove: (id: string) => void;
+  onReject: (id: string) => void;
+}) {
+  const { plan, status } = card;
+  const rejected = status === "rejected";
+  const steps = plan.steps ?? [];
+  return (
+    <div
+      style={{
+        alignSelf: "stretch",
+        marginTop: 4,
+        padding: "10px 12px",
+        borderRadius: "var(--radius-lg)",
+        background: "var(--bg-card)",
+        border: `1px solid ${rejected ? "var(--border-subtle)" : "var(--brand-accent)"}`,
+        boxShadow: "var(--shadow-sm)",
+        opacity: rejected ? 0.55 : 1,
+        filter: rejected ? "grayscale(0.7)" : undefined,
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+        pointerEvents: rejected ? "none" : undefined,
+        transition: "opacity 0.3s",
+      }}
+    >
+      {/* En-tête */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <Map
+          size={13}
+          color={rejected ? "var(--text-muted)" : "var(--brand-accent)"}
+        />
+        <span
+          style={{
+            fontWeight: 700,
+            fontSize: "10.5px",
+            letterSpacing: "0.5px",
+            color: rejected ? "var(--text-muted)" : "var(--brand-accent)",
+          }}
+        >
+          PLAN D'EXÉCUTION
+        </span>
+        {typeof plan.estimated_tokens === "number" &&
+          plan.estimated_tokens > 0 && (
+            <span
+              style={{
+                marginLeft: "auto",
+                fontSize: "10px",
+                color: "var(--text-muted)",
+              }}
+            >
+              ≈ {Math.max(1, Math.round(plan.estimated_tokens / 1000))}k tokens
+            </span>
+          )}
+      </div>
+
+      {/* Résumé */}
+      {plan.summary && (
+        <div
+          style={{
+            fontSize: "12px",
+            lineHeight: 1.5,
+            fontStyle: "italic",
+            color: "var(--text-secondary)",
+          }}
+        >
+          {plan.summary}
+        </div>
+      )}
+
+      {/* Étapes : badge de type coloré + nom + description courte */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {steps.map((step) => {
+          const meta =
+            STEP_TYPE_META[step.type ?? "task"] ?? STEP_TYPE_META.task;
+          return (
+            <div
+              key={step.id}
+              style={{ display: "flex", gap: 7, alignItems: "flex-start" }}
+            >
+              <span
+                style={{
+                  flexShrink: 0,
+                  marginTop: 1,
+                  fontSize: "9.5px",
+                  fontWeight: 700,
+                  padding: "1px 6px",
+                  borderRadius: 99,
+                  background: `${meta.color}1a`,
+                  color: meta.color,
+                  border: `1px solid ${meta.color}45`,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {meta.label}
+              </span>
+              <div style={{ minWidth: 0 }}>
+                <div
+                  style={{
+                    fontWeight: 600,
+                    fontSize: "12px",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  {step.name}
+                </div>
+                {step.description && (
+                  <div
+                    title={step.description}
+                    style={{
+                      fontSize: "11px",
+                      lineHeight: 1.4,
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    {shortenLine(step.description, 90)}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Risques éventuels */}
+      {plan.risks && plan.risks.length > 0 && (
+        <div
+          style={{
+            display: "flex",
+            gap: 6,
+            alignItems: "flex-start",
+            padding: "6px 8px",
+            borderRadius: "var(--radius-md)",
+            background: "rgba(245,158,11,0.06)",
+            border: "1px solid rgba(245,158,11,0.22)",
+          }}
+        >
+          <AlertTriangle
+            size={11}
+            color="var(--status-warning)"
+            style={{ flexShrink: 0, marginTop: 1 }}
+          />
+          <div
+            style={{
+              fontSize: "11px",
+              lineHeight: 1.45,
+              color: "var(--status-warning)",
+            }}
+          >
+            {plan.risks.join(" · ")}
+          </div>
+        </div>
+      )}
+
+      {/* Actions selon l'état de la carte */}
+      {status === "pending" && (
+        <div style={{ display: "flex", gap: 6 }}>
+          <button
+            onClick={() => onApprove(card.id)}
+            style={{
+              flex: 1,
+              padding: "7px 8px",
+              borderRadius: "var(--radius-md)",
+              border: "none",
+              cursor: "pointer",
+              background: "var(--status-success)",
+              color: "#fff",
+              fontWeight: 700,
+              fontSize: "11.5px",
+              fontFamily: "inherit",
+              transition: "all 0.2s",
+            }}
+          >
+            ✅ Approuver et exécuter
+          </button>
+          <button
+            onClick={() => onReject(card.id)}
+            style={{
+              padding: "7px 10px",
+              borderRadius: "var(--radius-md)",
+              border: "1px solid var(--border-subtle)",
+              cursor: "pointer",
+              background: "transparent",
+              color: "var(--status-error)",
+              fontWeight: 600,
+              fontSize: "11.5px",
+              fontFamily: "inherit",
+              transition: "all 0.2s",
+            }}
+          >
+            Rejeter
+          </button>
+        </div>
+      )}
+      {status === "executing" && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            fontSize: "11.5px",
+            color: "var(--text-muted)",
+            padding: "6px 2px",
+          }}
+        >
+          <Loader2 size={12} style={{ animation: "spin 1s linear infinite" }} />
+          Exécution du plan…
+        </div>
+      )}
+      {status === "executed" && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            fontSize: "11.5px",
+            fontWeight: 600,
+            color: "var(--status-success)",
+            padding: "6px 2px",
+          }}
+        >
+          <CheckCircle2 size={12} />
+          Plan exécuté — voir le récapitulatif ci-dessous
+        </div>
+      )}
+      {status === "rejected" && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            fontSize: "11.5px",
+            fontWeight: 600,
+            color: "var(--text-muted)",
+            padding: "6px 2px",
+          }}
+        >
+          <Ban size={12} />
+          Plan rejeté
+        </div>
+      )}
+    </div>
   );
 }
