@@ -37,17 +37,19 @@ export function register(router, ctx) {
       const all = await getAllTasks();
       return void sse; // already connected — broadcast loop will push
     }
-    const page = Math.max(1, parseInt(url.searchParams.get("page") || "0", 10));
-    const limit = Math.min(
-      200,
-      Math.max(1, parseInt(url.searchParams.get("limit") || "0", 10)),
-    );
+    // Pagination OPTIONNELLE : sans ?page et ?limit explicites, on renvoie la
+    // liste complète mappée (rowToTask). Bugfix : Math.max(1, 0)=1 faisait tomber
+    // toutes les requêtes sans paramètres dans la branche paginée (limit=1).
+    const pageParam = parseInt(url.searchParams.get("page") || "0", 10) || 0;
+    const limitParam = parseInt(url.searchParams.get("limit") || "0", 10) || 0;
+    const page = Math.max(1, pageParam);
+    const limit = Math.min(200, Math.max(1, limitParam));
     const status = (url.searchParams.get("status") || "").replace(
       /[^a-z]/g,
       "",
     );
 
-    if (page && limit) {
+    if (pageParam >= 1 && limitParam >= 1) {
       const where = status ? `WHERE statut=$3` : "";
       const params = status
         ? [limit, (page - 1) * limit, status]
