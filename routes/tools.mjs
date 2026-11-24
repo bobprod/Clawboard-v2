@@ -1,9 +1,19 @@
 // ─── Tools Routes (shell, git, traces, pairing, channels, tools config) ─────
 import crypto from "crypto";
 import { exec, spawn } from "child_process";
-import { dirname } from "path";
+import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { readFileSync, writeFileSync, existsSync } from "fs";
+
+// A directory is usable as a git repo if it exists and has a .git entry
+// (.git is a directory for normal clones, a file for worktrees/submodules).
+function isGitRepository(dir) {
+  try {
+    return existsSync(join(dir, ".git"));
+  } catch {
+    return false;
+  }
+}
 
 export function register(router, ctx) {
   const { pool, schemas, sanitizeObject, checkRateLimit, SECRET } = ctx;
@@ -11,6 +21,21 @@ export function register(router, ctx) {
     /[\\/]routes$/,
     "",
   );
+
+  // Repo exposed by the /api/git/* routes: the central hub by default.
+  const GIT_REPO =
+    process.env.CLAWBOARD_GIT_REPO ||
+    "C:\\Users\\BOB\\Desktop\\project dev\\central project";
+
+  // Clear error payload when GIT_REPO is not a git repository (never crash).
+  const gitRepoError = () =>
+    isGitRepository(GIT_REPO)
+      ? null
+      : {
+          error: `Dépôt git introuvable : "${GIT_REPO}" n'est pas un dépôt git.`,
+          hint: "Configurez CLAWBOARD_GIT_REPO vers un dépôt git valide.",
+          repo: GIT_REPO,
+        };
 
   // ── Shell ─────────────────────────────────────────────────────────────────
 
@@ -73,8 +98,10 @@ export function register(router, ctx) {
   // ── Git ───────────────────────────────────────────────────────────────────
 
   router.get("/api/git/branches", ({ json }) => {
+    const repoError = gitRepoError();
+    if (repoError) return json(500, repoError);
     exec(
-      `git -C "${repoDir}" branch -a --format="%(refname:short)"`,
+      `git -C "${GIT_REPO}" branch -a --format="%(refname:short)"`,
       { timeout: 8000 },
       (err, stdout) => {
         if (err)
@@ -89,7 +116,7 @@ export function register(router, ctx) {
           .map((b) => b.trim())
           .filter(Boolean);
         exec(
-          `git -C "${repoDir}" rev-parse --abbrev-ref HEAD`,
+          `git -C "${GIT_REPO}" rev-parse --abbrev-ref HEAD`,
           { timeout: 3000 },
           (e2, cur) => {
             json(200, { branches, current: (cur || "main").trim() });
@@ -100,6 +127,8 @@ export function register(router, ctx) {
   });
 
   router.get("/api/git/log", ({ url, json }) => {
+    const repoError = gitRepoError();
+    if (repoError) return json(500, repoError);
     const branch = (url.searchParams.get("branch") || "HEAD").replace(
       /[^a-zA-Z0-9/_.-]/g,
       "",
@@ -108,26 +137,22 @@ export function register(router, ctx) {
       parseInt(url.searchParams.get("limit") || "30", 10),
       100,
     );
-    const fmt =
-      '--pretty=format:{"hash":"%H","short":"%h","subject":"%s","author":"%an","email":"%ae","date":"%aI","refs":"%D"}';
+    // Use \x1f (unit separator) instead of an inline JSON format: cmd.exe
+    // mangles the double quotes, which made every log request return [].
+    const fmt = "--pretty=format:%H%x1f%h%x1f%s%x1f%an%x1f%ae%x1f%aI%x1f%D";
     exec(
-      `git -C "${repoDir}" log ${branch} ${fmt} -n ${limit}`,
+      `git -C "${GIT_REPO}" log ${branch} ${fmt} -n ${limit}`,
       { timeout: 10000 },
       (err, stdout) => {
         if (err) return json(200, []);
-        const lines = stdout.trim().split("\n").filter(Boolean);
-        json(
-          200,
-          lines
-            .map((l) => {
-              try {
-                return JSON.parse(l);
-              } catch {
-                return null;
-              }
-            })
-            .filter(Boolean),
-        );
+        const commits = String(stdout || "")
+          .split(/\r?\n/)
+          .filter(Boolean)
+          .map((line) => {
+            const [hash, short, subject, author, email, date, refs] = line.split("\x1f");
+            return { hash, short, subject, author, email, date, refs };
+          });
+        json(200, commits);
       },
     );
   });
@@ -135,19 +160,21 @@ export function register(router, ctx) {
   router.get(
     /^\/api\/git\/diff\/([a-f0-9]{6,40})$/,
     ({ url, json, params }) => {
+      const repoError = gitRepoError();
+      if (repoError) return json(500, repoError);
       const hash = params[1];
       const filePath = (url.searchParams.get("file") || "").replace(
         /[^a-zA-Z0-9/_. -]/g,
         "",
       );
       const cmd = filePath
-        ? `git -C "${repoDir}" diff ${hash}~1 ${hash} -- "${filePath}"`
-        : `git -C "${repoDir}" diff ${hash}~1 ${hash} --stat && echo "---FULL_DIFF---" && git -C "${repoDir}" diff ${hash}~1 ${hash}`;
+        ? `git -C "${GIT_REPO}" diff ${hash}~1 ${hash} -- "${filePath}"`
+        : `git -C "${GIT_REPO}" diff ${hash}~1 ${hash} --stat && echo "---FULL_DIFF---" && git -C "${GIT_REPO}" diff ${hash}~1 ${hash}`;
       exec(cmd, { timeout: 15000, maxBuffer: 1024 * 512 }, (err, stdout) => {
         if (err) {
           const rootCmd = filePath
-            ? `git -C "${repoDir}" diff --root ${hash} -- "${filePath}"`
-            : `git -C "${repoDir}" diff --root ${hash}`;
+            ? `git -C "${GIT_REPO}" diff --root ${hash} -- "${filePath}"`
+            : `git -C "${GIT_REPO}" diff --root ${hash}`;
           exec(
             rootCmd,
             { timeout: 15000, maxBuffer: 1024 * 512 },
@@ -163,9 +190,11 @@ export function register(router, ctx) {
   );
 
   router.get(/^\/api\/git\/show\/([a-f0-9]{6,40})$/, ({ json, params }) => {
+    const repoError = gitRepoError();
+    if (repoError) return json(500, repoError);
     const hash = params[1];
     exec(
-      `git -C "${repoDir}" diff-tree --no-commit-id -r --numstat ${hash}`,
+      `git -C "${GIT_REPO}" diff-tree --no-commit-id -r --numstat ${hash}`,
       { timeout: 8000 },
       (err, stdout) => {
         if (err) return json(200, { files: [] });

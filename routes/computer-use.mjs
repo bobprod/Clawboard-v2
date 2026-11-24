@@ -133,6 +133,39 @@ async function ensureWorkspace(sessionId) {
   return dir;
 }
 
+// ─── Screenshot helpers ─────────────────────────────────────────────────────
+
+const FALLBACK_SCREEN = { width: 1920, height: 1080 };
+
+// Read the real pixel size from the PNG IHDR chunk instead of guessing.
+// PNG layout: 8-byte signature, then chunk length (4) + "IHDR" (4) + width (4)
+// + height (4) → width is a uint32BE at offset 16, height at offset 20.
+function pngDimensions(base64) {
+  try {
+    const buf = Buffer.from(base64, "base64");
+    if (buf.length < 24) return { ...FALLBACK_SCREEN };
+    // 89 50 4E 47 0D 0A 1A 0A
+    const isPng =
+      buf[0] === 0x89 &&
+      buf[1] === 0x50 &&
+      buf[2] === 0x4e &&
+      buf[3] === 0x47 &&
+      buf[4] === 0x0d &&
+      buf[5] === 0x0a &&
+      buf[6] === 0x1a &&
+      buf[7] === 0x0a;
+    if (!isPng || buf.toString("ascii", 12, 16) !== "IHDR") {
+      return { ...FALLBACK_SCREEN };
+    }
+    const width = buf.readUInt32BE(16);
+    const height = buf.readUInt32BE(20);
+    if (!width || !height) return { ...FALLBACK_SCREEN };
+    return { width, height };
+  } catch {
+    return { ...FALLBACK_SCREEN };
+  }
+}
+
 // ─── Computer Use: Action Handlers ──────────────────────────────────────────
 
 const computerActions = {
@@ -158,7 +191,8 @@ Add-Type -AssemblyName System.Windows.Forms
           { timeout: ACTION_TIMEOUT, maxBuffer: 20 * 1024 * 1024 },
           (err, stdout) => {
             if (err) return reject(err);
-            resolve({ screenshot: stdout.trim(), width: 1920, height: 1080 });
+            const screenshot = stdout.trim();
+            resolve({ screenshot, ...pngDimensions(screenshot) });
           },
         );
       });

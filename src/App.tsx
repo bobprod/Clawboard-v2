@@ -571,7 +571,7 @@ const Sidebar = ({
           {/* ── TRAVAIL ── */}
           <li className="nav-section-label">Travail</li>
           <NavLink to="/memory" icon={BrainCircuit} tourId="nav-memory">
-            Mémoire (QMD)
+            Mémoire
           </NavLink>
           <NavLink
             to="/collaborations"
@@ -687,6 +687,34 @@ function getPageContext(pathname: string): string {
   return "Tu es l'assistant IA de ClawBoard, un orchestrateur d'agents IA (NemoClaw). Aide l'utilisateur avec ses questions sur le module actuel.";
 }
 
+// ── Page title for the topbar, derived from the current route ───────
+const PAGE_TITLES: Record<string, string> = {
+  "/": "Tableau de bord",
+  "/tasks": "Tâches",
+  "/agents": "Agents",
+  "/memory": "Mémoire",
+  "/collaborations": "Collaborations",
+  "/collaboration": "Collaborations",
+  "/security": "Sécurité",
+  "/devtools": "Outils & Logs",
+  "/tools": "Outils & Logs",
+  "/settings": "Paramètres",
+  "/chat": "Chat Lia",
+  "/workspace": "Workspace",
+  "/browser": "Navigateur",
+  "/cowork": "Cowork",
+  "/terminal": "Terminal",
+};
+
+function getPageTitle(pathname: string): string {
+  if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname];
+  // Match prefix routes like /tasks/:id
+  for (const [route, title] of Object.entries(PAGE_TITLES)) {
+    if (route !== "/" && pathname.startsWith(`${route}/`)) return title;
+  }
+  return "ClawBoard";
+}
+
 const AppShell = ({
   theme,
   setTheme,
@@ -744,7 +772,7 @@ const AppShell = ({
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <main className="main-content">
         <header className="topbar glass-panel">
-          <h1>Bienvenue sur ClawBoard</h1>
+          <h1>{getPageTitle(location.pathname)}</h1>
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             {/* ── Quick-access buttons ─────────────────────────── */}
             {[
