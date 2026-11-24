@@ -1,7 +1,8 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   LayoutGrid,
+  List,
   Network,
   Layers,
   Download,
@@ -34,7 +35,11 @@ const AgentStore = lazy(() =>
 
 // ─── Tab definitions ──────────────────────────────────────────────────────────
 
-type TabId = "overview" | "map" | "cowork" | "installer" | "team" | "store";
+// Fusion A3 : l'onglet « map » est fusionné dans « overview » (vue Graphe).
+// L'id « map » reste accepté en entrée pour la compatibilité des liens
+// existants (?tab=map → onglet Agents, vue Graphe active).
+type TabId = "overview" | "cowork" | "installer" | "team" | "store";
+type OverviewView = "list" | "graph";
 
 interface TabDef {
   id: TabId;
@@ -46,15 +51,9 @@ interface TabDef {
 const TABS: TabDef[] = [
   {
     id: "overview",
-    label: "Mes Agents",
+    label: "Agents",
     icon: LayoutGrid,
-    desc: "Tous vos agents IA en un coup d'œil",
-  },
-  {
-    id: "map",
-    label: "Carte réseau",
-    icon: Network,
-    desc: "Graphe d'orchestration NemoClaw",
+    desc: "Tous vos agents IA — vue Liste ou Graphe d'orchestration",
   },
   {
     id: "cowork",
@@ -80,6 +79,18 @@ const TABS: TabDef[] = [
     icon: Store,
     desc: "Catalogue d'assistants IA",
   },
+];
+
+// ─── Vue de l'onglet fusionné « Agents » (Liste ↔ Graphe) ─────────────────────
+
+const VIEW_OPTIONS: {
+  id: OverviewView;
+  label: string;
+  icon: typeof LayoutGrid;
+  desc: string;
+}[] = [
+  { id: "list",  label: "Liste",  icon: List,    desc: "Cartes d'agents — orchestrateur, agents internes et CLI" },
+  { id: "graph", label: "Graphe", icon: Network, desc: "Graphe d'orchestration NemoClaw (expérimental)" },
 ];
 
 // ─── Spinner fallback ─────────────────────────────────────────────────────────
@@ -108,12 +119,39 @@ export const AgentsHub = () => {
   const [params] = useSearchParams();
   const navigate = useNavigate();
 
-  const rawTab = params.get("tab") as TabId | null;
+  const rawTab = params.get("tab");
+  const rawView = params.get("view");
+  // Compatibilité URL : l'ancien ?tab=map ouvre l'onglet fusionné
+  // avec la vue Graphe active.
+  const isLegacyMap = rawTab === "map";
+
   const activeTab: TabId =
-    rawTab && TABS.some((t) => t.id === rawTab) ? rawTab : "overview";
+    rawTab && TABS.some((t) => t.id === rawTab)
+      ? (rawTab as TabId)
+      : "overview";
+
+  // Vue courante de l'onglet fusionné « overview » (Liste ↔ Graphe).
+  const [view, setView] = useState<OverviewView>(() =>
+    isLegacyMap || rawView === "graph" ? "graph" : "list",
+  );
+
+  // Un lien entrant (?tab=map, ?view=graph/list) pilote la vue active ;
+  // changer d'onglet sans paramètre de vue conserve la vue choisie.
+  useEffect(() => {
+    if (isLegacyMap || rawView === "graph") setView("graph");
+    else if (rawView === "list") setView("list");
+  }, [isLegacyMap, rawView]);
 
   const setTab = (id: TabId) =>
-    navigate(`/agents?tab=${id}`, { replace: true });
+    navigate(
+      id === "overview"
+        ? `/agents?tab=overview&view=${view}`
+        : `/agents?tab=${id}`,
+      { replace: true },
+    );
+
+  const setViewParam = (v: OverviewView) =>
+    navigate(`/agents?tab=overview&view=${v}`, { replace: true });
 
   const activeTabDef = TABS.find((t) => t.id === activeTab) ?? TABS[0];
 
@@ -181,11 +219,62 @@ export const AgentsHub = () => {
         {activeTabDef.desc}
       </p>
 
+      {/* ── Segmented toggle : Liste ↔ Graphe (onglet « Agents » fusionné) ── */}
+      {activeTab === "overview" && (
+        <div
+          style={{
+            display: "flex",
+            gap: "3px",
+            background: "var(--bg-glass)",
+            borderRadius: "var(--radius-md)",
+            padding: "4px",
+            border: "1px solid var(--border-subtle)",
+            width: "fit-content",
+            marginBottom: "14px",
+            flexShrink: 0,
+          }}
+        >
+          {VIEW_OPTIONS.map((v) => {
+            const isActive = view === v.id;
+            return (
+              <button
+                key={v.id}
+                onClick={() => setViewParam(v.id)}
+                title={v.desc}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "7px",
+                  padding: "6px 14px",
+                  borderRadius: "calc(var(--radius-md) - 2px)",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: "12.5px",
+                  fontWeight: isActive ? 700 : 500,
+                  transition: "all 0.2s",
+                  background: isActive
+                    ? "rgba(139,92,246,0.18)"
+                    : "transparent",
+                  color: isActive
+                    ? "var(--brand-accent)"
+                    : "var(--text-secondary)",
+                  boxShadow: isActive
+                    ? "0 2px 8px rgba(139,92,246,0.15)"
+                    : "none",
+                }}
+              >
+                <v.icon size={13} style={{ opacity: isActive ? 1 : 0.65 }} />
+                {v.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* ── Tab content ────────────────────────────────────────────────── */}
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
         <Suspense fallback={<TabFallback />}>
-          {activeTab === "overview"   && <AgentsOverview />}
-          {activeTab === "map"        && <AgentsHierarchyModule />}
+          {activeTab === "overview"   && (view === "graph" ? <AgentsHierarchyModule /> : <AgentsOverview />)}
           {activeTab === "cowork"     && <CoworkModule />}
           {activeTab === "installer"  && <AcpManager />}
           {activeTab === "team"       && <TeamMode />}

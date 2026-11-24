@@ -22,6 +22,8 @@ import {
   Search,
   Plus,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   AlertCircle,
   Network,
   Download,
@@ -371,6 +373,112 @@ function Section({ title, subtitle, count }: { title: string; subtitle: string; 
   );
 }
 
+// ─── Enrobage « Expérimental » NemoClaw ───────────────────────────────────────
+// NemoClaw repose sur WSL, indisponible sur cette machine : les vues qui en
+// dépendent (sandboxes, graphe d'orchestration) restent accessibles mais
+// repliées par défaut derrière ce bandeau discret. La préférence est persistée
+// dans localStorage (clé « clawboard-show-experimental », défaut = replié).
+// Si l'API NemoClaw est injoignable (WSL down), aucune erreur brute n'apparaît :
+// on reste replié avec le bandeau.
+
+const EXPERIMENTAL_LS_KEY = "clawboard-show-experimental";
+
+export const NemoExperimentalGate = ({
+  children,
+}: {
+  children: React.ReactNode;
+}) => {
+  const [show, setShow] = useState<boolean>(() => {
+    try {
+      return window.localStorage.getItem(EXPERIMENTAL_LS_KEY) === "true";
+    } catch {
+      return false; // stockage indisponible → replié par défaut
+    }
+  });
+
+  const toggle = () => {
+    setShow((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem(EXPERIMENTAL_LS_KEY, String(next));
+      } catch {
+        /* pas de persistance disponible — le toggle reste utilisable */
+      }
+      return next;
+    });
+  };
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 16,
+        height: "100%",
+      }}
+    >
+      {/* Bandeau discret — toujours visible, contenu replié par défaut */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          flexWrap: "wrap",
+          background: "rgba(245,158,11,0.06)",
+          border: "1px solid rgba(245,158,11,0.22)",
+          borderRadius: "var(--radius-md)",
+          padding: "8px 14px",
+          boxShadow: "var(--shadow-sm)",
+          flexShrink: 0,
+        }}
+      >
+        <span
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            fontSize: "12.5px",
+            lineHeight: 1.4,
+          }}
+        >
+          <span style={{ fontWeight: 700 }}>⚠️</span>
+          <strong style={{ color: "var(--status-warning)", fontWeight: 700 }}>
+            Expérimental
+          </strong>
+          <span style={{ color: "var(--text-muted)" }}>
+            — NemoClaw (WSL indisponible sur cette machine)
+          </span>
+        </span>
+        <button
+          onClick={toggle}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "5px 12px",
+            borderRadius: 8,
+            border: "1px solid rgba(245,158,11,0.3)",
+            background: "rgba(245,158,11,0.1)",
+            color: "var(--status-warning)",
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: "pointer",
+            transition: "all 0.2s",
+            flexShrink: 0,
+          }}
+        >
+          {show ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+          {show ? "Masquer l'expérimental" : "Afficher l'expérimental"}
+        </button>
+      </div>
+
+      {/* Contenu expérimental — affiché uniquement sur demande */}
+      {show && children}
+    </div>
+  );
+};
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export const AgentsOverview = () => {
@@ -480,12 +588,14 @@ export const AgentsOverview = () => {
 
   if (loading) {
     return (
+      <NemoExperimentalGate>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center",
         gap: 12, padding: "80px", color: "var(--text-muted)", fontSize: 14 }}>
         <Loader2 size={20} style={{ animation: "spin 1s linear infinite" }} />
         Chargement des agents…
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
+      </NemoExperimentalGate>
     );
   }
 
@@ -495,7 +605,8 @@ export const AgentsOverview = () => {
                      + acpAgents.filter(a => ["idle","busy"].includes(a.status)).length;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 32, paddingBottom: 32 }}>
+    <NemoExperimentalGate>
+    <div style={{ display: "flex", flexDirection: "column", gap: 32, paddingBottom: 32, flexShrink: 0 }}>
 
       {/* ── Hero banner ─────────────────────────────────────────────── */}
       <div style={{
@@ -673,5 +784,6 @@ export const AgentsOverview = () => {
         .spin { animation: spin 1s linear infinite; }
       `}</style>
     </div>
+    </NemoExperimentalGate>
   );
 };

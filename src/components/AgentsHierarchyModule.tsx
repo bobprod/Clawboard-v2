@@ -37,6 +37,7 @@ import {
 import { apiFetch } from "../lib/apiFetch";
 import { TaskChatDrawer, useTaskChat } from "./TaskChatDrawer";
 import type { TaskChatContext } from "./TaskChatDrawer";
+import { NemoExperimentalGate } from "./AgentsOverview";
 
 const BASE = "http://localhost:4000";
 
@@ -1349,12 +1350,15 @@ export const AgentsHierarchyModule = () => {
   const offlineCount = agents.filter((a) => a.status === "offline").length;
 
   return (
+    <NemoExperimentalGate>
     <div
       style={{
         display: "flex",
         flexDirection: "column",
         gap: "20px",
         height: "100%",
+        flex: 1,
+        minHeight: 0,
         paddingBottom: "20px",
       }}
     >
@@ -1938,6 +1942,7 @@ export const AgentsHierarchyModule = () => {
       )}
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
+    </NemoExperimentalGate>
   );
 };
 
