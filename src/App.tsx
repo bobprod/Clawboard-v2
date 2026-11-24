@@ -95,6 +95,7 @@ const AgentsHub = lazy(() =>
   })),
 );
 import { AgentChat } from "./components/AgentChat";
+import { CommandPalette } from "./components/CommandPalette";
 import { useSSE } from "./hooks/useSSE";
 import {
   TerminalSquare,
@@ -943,6 +944,7 @@ const AppShell = ({
         <PageContent />
       </main>
       <AgentChat pageContext={getPageContext(location.pathname)} />
+      <CommandPalette />
     </div>
   );
 };
