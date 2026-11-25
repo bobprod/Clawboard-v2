@@ -119,8 +119,8 @@ import "./index.css";
 import { GlobalChatProvider } from "./hooks/useGlobalChat";
 
 const THEMES = [
-  { id: "dark", label: "Dark", color: "#09090b", accent: "#8b5cf6" },
-  { id: "light", label: "Light", color: "#f1f5f9", accent: "#7c3aed" },
+  { id: "dark", label: "Dark", color: "#08090a", accent: "#5e6ad2" },
+  { id: "light", label: "Light", color: "#fafafa", accent: "#4f5bbf" },
   { id: "synthwave", label: "Synthwave", color: "#0d0117", accent: "#ff2d78" },
   { id: "nord", label: "Nord", color: "#2e3440", accent: "#88c0d0" },
   {
@@ -238,10 +238,12 @@ const ThemeSwitcher = ({
                 padding: "9px 12px",
                 borderRadius: "var(--radius-sm)",
                 background:
-                  theme === t.id ? "rgba(139,92,246,0.1)" : "transparent",
+                  theme === t.id
+                    ? "color-mix(in srgb, var(--brand-accent) 10%, transparent)"
+                    : "transparent",
                 border:
                   theme === t.id
-                    ? "1px solid rgba(139,92,246,0.2)"
+                    ? "1px solid color-mix(in srgb, var(--brand-accent) 20%, transparent)"
                     : "1px solid transparent",
                 cursor: "pointer",
                 color:
@@ -758,7 +760,7 @@ const AppShell = ({
   const avatarSeed = encodeURIComponent(user?.username ?? "Admin");
   const avatarSrc =
     user?.avatar ??
-    `https://api.dicebear.com/7.x/notionists/svg?seed=${avatarSeed}&backgroundColor=8b5cf6`;
+    `https://api.dicebear.com/7.x/notionists/svg?seed=${avatarSeed}&backgroundColor=5e6ad2`;
 
   const handleLogout = () => {
     localStorage.removeItem("clawboard-token");
@@ -805,44 +807,43 @@ const AppShell = ({
                 to: "/workspace",
                 icon: HardDrive,
                 label: "Workspace",
-                color: "#3b82f6",
               },
               {
                 to: "/browser",
                 icon: Globe,
                 label: "Navigateur",
-                color: "#10b981",
               },
-            ].map((btn) => (
-              <button
-                key={btn.to}
-                onClick={() => navigate(btn.to)}
-                title={btn.label}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  padding: "6px 14px",
-                  borderRadius: "var(--radius-full)",
-                  background:
-                    location.pathname === btn.to
-                      ? `${btn.color}20`
+            ].map((btn) => {
+              const isActive = location.pathname === btn.to;
+              return (
+                <button
+                  key={btn.to}
+                  onClick={() => navigate(btn.to)}
+                  title={btn.label}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "6px 14px",
+                    borderRadius: "var(--radius-full)",
+                    background: isActive
+                      ? "color-mix(in srgb, var(--brand-accent) 14%, transparent)"
                       : "rgba(255,255,255,0.05)",
-                  border: `1px solid ${location.pathname === btn.to ? `${btn.color}40` : "var(--border-subtle)"}`,
-                  color:
-                    location.pathname === btn.to
-                      ? btn.color
+                    border: `1px solid ${isActive ? "var(--brand-accent)" : "var(--border-subtle)"}`,
+                    color: isActive
+                      ? "var(--brand-accent)"
                       : "var(--text-secondary)",
-                  cursor: "pointer",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  transition: "all 0.2s",
-                }}
-              >
-                <btn.icon size={14} />
-                <span className="topbar-btn-label">{btn.label}</span>
-              </button>
-            ))}
+                    cursor: "pointer",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    transition: "all 0.2s",
+                  }}
+                >
+                  <btn.icon size={14} />
+                  <span className="topbar-btn-label">{btn.label}</span>
+                </button>
+              );
+            })}
             <div
               style={{
                 width: "1px",

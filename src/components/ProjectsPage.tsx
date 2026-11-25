@@ -101,7 +101,7 @@ export function ProjectsPage() {
   const [showNew, setShowNew] = useState(false);
   const [newName, setNewName] = useState("");
   const [newDesc, setNewDesc] = useState("");
-  const [newColor, setNewColor] = useState("#8b5cf6");
+  const [newColor, setNewColor] = useState("#5e6ad2");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [showUnassigned, setShowUnassigned] = useState(true);
 

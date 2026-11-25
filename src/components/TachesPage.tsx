@@ -189,7 +189,11 @@ function Tag({
         fontWeight: 600,
         padding: "2px 8px",
         borderRadius: "5px",
-        background: bg ?? `${color}18`,
+        background:
+          bg ??
+          (color.startsWith("var(")
+            ? `color-mix(in srgb, ${color} 12%, transparent)`
+            : `${color}18`),
         color,
       }}
     >
@@ -313,7 +317,7 @@ function KanbanCard({
         style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8 }}
       >
         {skill && <Tag label={skill} />}
-        {agent && <Tag label={agent} color="#8b5cf6" />}
+        {agent && <Tag label={agent} color="var(--brand-accent)" />}
       </div>
 
       {/* Footer: date + cost */}
@@ -787,7 +791,7 @@ function TabTaches({
                   padding: "4px 12px",
                   borderRadius: "999px",
                   border: `1px solid ${agentFilter === "all" ? "var(--brand-accent)" : "var(--border-subtle)"}`,
-                  background: agentFilter === "all" ? "rgba(139,92,246,0.18)" : "transparent",
+                  background: agentFilter === "all" ? "color-mix(in srgb, var(--brand-accent) 18%, transparent)" : "transparent",
                   color: agentFilter === "all" ? "var(--brand-accent)" : "var(--text-secondary)",
                   cursor: "pointer",
                   fontSize: "11px",
@@ -800,7 +804,7 @@ function TabTaches({
               {agentIdsInTasks.map((aid) => {
                 const rAgent = rosterAgents.find((a) => a.id === aid || a.name === aid);
                 const label = rAgent?.name ?? aid;
-                const color = rAgent?.color ?? "#8b5cf6";
+                const color = rAgent?.color ?? "var(--brand-accent)";
                 const active = agentFilter === aid;
                 return (
                   <button
@@ -810,7 +814,11 @@ function TabTaches({
                       padding: "4px 12px",
                       borderRadius: "999px",
                       border: `1px solid ${active ? color : "var(--border-subtle)"}`,
-                      background: active ? `${color}22` : "transparent",
+                      background: active
+                        ? color.startsWith("var(")
+                          ? `color-mix(in srgb, ${color} 14%, transparent)`
+                          : `${color}22`
+                        : "transparent",
                       color: active ? color : "var(--text-secondary)",
                       cursor: "pointer",
                       fontSize: "11px",
@@ -866,7 +874,7 @@ function TabTaches({
                   borderRadius: "7px",
                   border: "none",
                   background:
-                    view === v ? "rgba(139,92,246,0.2)" : "transparent",
+                    view === v ? "color-mix(in srgb, var(--brand-accent) 20%, transparent)" : "transparent",
                   color:
                     view === v
                       ? "var(--brand-accent)"
@@ -977,7 +985,7 @@ function TabTaches({
                       </span>
                       {skill && <Tag label={skill} />}
                       {agent && agent !== "main" && (
-                        <Tag label={agent} color="#8b5cf6" />
+                        <Tag label={agent} color="var(--brand-accent)" />
                       )}
                       {llm && llm !== "—" && (
                         <Tag label={llm} color="#f59e0b" />
@@ -1407,9 +1415,9 @@ function TabModeles() {
             alignItems: "center",
             gap: 6,
             padding: "8px 16px",
-            background: showForm ? "var(--bg-glass)" : "rgba(139,92,246,0.12)",
+            background: showForm ? "var(--bg-glass)" : "color-mix(in srgb, var(--brand-accent) 12%, transparent)",
             color: "var(--brand-accent)",
-            border: "1px solid rgba(139,92,246,0.3)",
+            border: "1px solid color-mix(in srgb, var(--brand-accent) 30%, transparent)",
             borderRadius: 9,
             cursor: "pointer",
             fontWeight: 600,
@@ -1800,8 +1808,8 @@ function TabModeles() {
               </div>
             </div>
             <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-              {mod.agent && <Tag label={mod.agent} color="#3b82f6" />}
-              {mod.canal && <Tag label={mod.canal} color="#8b5cf6" />}
+              {mod.agent && <Tag label={mod.agent} color="var(--brand-accent)" />}
+              {mod.canal && <Tag label={mod.canal} color="var(--brand-accent)" />}
               {mod.llmModel && (
                 <Tag label={modelShortName(mod.llmModel)} color="#10b981" />
               )}
@@ -1852,9 +1860,9 @@ function TabModeles() {
                   flexDirection: "column",
                   gap: 10,
                   padding: "14px",
-                  background: "rgba(139,92,246,0.04)",
+                  background: "color-mix(in srgb, var(--brand-accent) 4%, transparent)",
                   borderRadius: 10,
-                  border: "1px solid rgba(139,92,246,0.15)",
+                  border: "1px solid color-mix(in srgb, var(--brand-accent) 15%, transparent)",
                 }}
               >
                 <div
@@ -2209,7 +2217,7 @@ function TabRecurrences() {
             <Tag label={modelShortName(rec.llmModel)} color="#10b981" />
             <Tag
               label={rec.timezone.split("/")[1] ?? rec.timezone}
-              color="#3b82f6"
+              color="var(--brand-accent)"
             />
           </div>
 
@@ -2426,7 +2434,6 @@ function TabPreInstructions() {
               fontWeight: 600,
               fontSize: "14px",
               transition: "all 0.3s",
-              boxShadow: saved ? "none" : "0 4px 14px rgba(139,92,246,0.35)",
             }}
           >
             {saved ? (
@@ -2447,10 +2454,10 @@ function TabPreInstructions() {
           style={{
             fontSize: "13px",
             color: "var(--text-secondary)",
-            background: "rgba(139,92,246,0.06)",
+            background: "color-mix(in srgb, var(--brand-accent) 6%, transparent)",
             padding: "12px 16px",
             borderRadius: "10px",
-            border: "1px solid rgba(139,92,246,0.2)",
+            border: "1px solid color-mix(in srgb, var(--brand-accent) 20%, transparent)",
             lineHeight: 1.6,
           }}
         >
@@ -2741,9 +2748,9 @@ function TabArchives() {
             padding: "7px 14px",
             borderRadius: 8,
             whiteSpace: "nowrap",
-            background: "rgba(59,130,246,0.08)",
-            border: "1px solid rgba(59,130,246,0.25)",
-            color: "#3b82f6",
+            background: "color-mix(in srgb, var(--brand-accent) 8%, transparent)",
+            border: "1px solid color-mix(in srgb, var(--brand-accent) 25%, transparent)",
+            color: "var(--brand-accent)",
             cursor: filtered.length === 0 ? "not-allowed" : "pointer",
             fontSize: "12px",
             fontWeight: 600,
@@ -2825,7 +2832,7 @@ function TabArchives() {
                   borderRadius: 6,
                   border: "none",
                   cursor: "pointer",
-                  background: active ? "rgba(139,92,246,0.15)" : "transparent",
+                  background: active ? "color-mix(in srgb, var(--brand-accent) 15%, transparent)" : "transparent",
                   color: active
                     ? "var(--brand-accent)"
                     : "var(--text-secondary)",
@@ -3198,9 +3205,9 @@ export const TachesPage = () => {
                 gap: "6px",
                 padding: "9px 16px",
                 borderRadius: "var(--radius-full)",
-                background: "rgba(59,130,246,0.08)",
-                border: "1px solid rgba(59,130,246,0.25)",
-                color: "#3b82f6",
+                background: "color-mix(in srgb, var(--brand-accent) 8%, transparent)",
+                border: "1px solid color-mix(in srgb, var(--brand-accent) 25%, transparent)",
+                color: "var(--brand-accent)",
                 cursor: "pointer",
                 fontWeight: 600,
                 fontSize: "0.875rem",
@@ -3208,15 +3215,15 @@ export const TachesPage = () => {
               }}
               onMouseOver={(e) => {
                 (e.currentTarget as HTMLButtonElement).style.background =
-                  "rgba(59,130,246,0.15)";
+                  "color-mix(in srgb, var(--brand-accent) 15%, transparent)";
                 (e.currentTarget as HTMLButtonElement).style.borderColor =
-                  "rgba(59,130,246,0.45)";
+                  "color-mix(in srgb, var(--brand-accent) 45%, transparent)";
               }}
               onMouseOut={(e) => {
                 (e.currentTarget as HTMLButtonElement).style.background =
-                  "rgba(59,130,246,0.08)";
+                  "color-mix(in srgb, var(--brand-accent) 8%, transparent)";
                 (e.currentTarget as HTMLButtonElement).style.borderColor =
-                  "rgba(59,130,246,0.25)";
+                  "color-mix(in srgb, var(--brand-accent) 25%, transparent)";
               }}
             >
               <HelpCircle size={15} /> Guide
@@ -3230,14 +3237,12 @@ export const TachesPage = () => {
                 alignItems: "center",
                 gap: "8px",
                 padding: "10px 24px",
-                background:
-                  "linear-gradient(135deg, var(--brand-primary), var(--brand-accent))",
+                background: "var(--brand-accent)",
                 color: "#fff",
                 borderRadius: "var(--radius-full)",
                 textDecoration: "none",
                 fontWeight: 600,
                 fontSize: "0.95rem",
-                boxShadow: "0 4px 20px rgba(139,92,246,0.4)",
                 border: "1px solid rgba(255,255,255,0.1)",
               }}
             >
@@ -3284,7 +3289,7 @@ export const TachesPage = () => {
                 border: "none",
                 background:
                   activeTab === tab.id
-                    ? "rgba(139,92,246,0.18)"
+                    ? "color-mix(in srgb, var(--brand-accent) 18%, transparent)"
                     : "transparent",
                 color:
                   activeTab === tab.id

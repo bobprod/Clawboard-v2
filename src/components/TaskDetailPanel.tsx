@@ -72,24 +72,24 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const EVT_COLOR: Record<string, string> = {
-  created: '#8b5cf6', launched: '#3b82f6', completed: '#10b981',
+  created: 'var(--brand-accent)', launched: '#3b82f6', completed: '#10b981',
   failed: '#ef4444', retry: '#f59e0b', info: '#a1a1aa',
 };
 
 const PANEL_MODELS: { id: string; label: string; color?: string; provider?: string }[] = [
-  { id: 'claude-sonnet-4-6',                       label: 'Claude Sonnet 4.6',      color: '#8b5cf6' },
+  { id: 'claude-sonnet-4-6',                       label: 'Claude Sonnet 4.6',      color: 'var(--brand-accent)' },
   { id: 'nvidia/llama-3.1-nemotron-ultra-253b-v1', label: '⚡ Nemotron Ultra 253B', color: '#76b900' },
   { id: 'nvidia/llama-3.3-nemotron-super-49b-v1',  label: 'Nemotron Super 49B',     color: '#76b900' },
   { id: 'meta/llama-3.1-405b-instruct',            label: '⚡ Llama 3.1 405B',      color: '#0064c8' },
   { id: 'deepseek-ai/deepseek-v3.2',               label: 'DeepSeek V3.2',          color: '#1a73e8' },
-  { id: 'qwen/qwq-32b',                            label: 'QwQ 32B',                color: '#9333ea' },
+  { id: 'qwen/qwq-32b',                            label: 'QwQ 32B',                color: 'var(--brand-accent)' },
   { id: 'moonshotai/kimi-k2.5',                    label: 'Kimi K2.5',              color: '#3b82f6' },
   { id: 'gemini/gemini-2.5-flash',                 label: 'Gemini 2.5 Flash',       color: '#4285f4' },
   { id: 'ollama/qwen2.5',                          label: 'Qwen 2.5 (local)',        color: '#10b981' },
 ];
 
 const LOG_COLORS: Record<string, string> = {
-  '[BOOT]': '#6366f1', '[INIT]': '#8b5cf6', '[NET]': '#3b82f6',
+  '[BOOT]': 'var(--brand-accent)', '[INIT]': 'var(--brand-accent)', '[NET]': '#3b82f6',
   '[LLM]': '#10b981',  '[EXEC]': '#a1a1aa', 'WARNING': '#f59e0b', '[ERROR]': '#ef4444',
 };
 
@@ -138,8 +138,8 @@ function MarkdownOutput({ text }: { text: string }) {
   return (
     <div style={{ fontFamily: 'var(--mono)', fontSize: '12px', lineHeight: 1.8, color: '#c4c4d4' }}>
       {(text || '').split('\n').map((line, i) => {
-        if (line.startsWith('## ')) return <div key={i} style={{ color: '#818cf8', fontWeight: 700, fontSize: '13px', marginTop: '12px' }}>{line.slice(3)}</div>;
-        if (line.startsWith('# '))  return <div key={i} style={{ color: '#6366f1', fontWeight: 700, fontSize: '14px', marginTop: '16px' }}>{line.slice(2)}</div>;
+        if (line.startsWith('## ')) return <div key={i} style={{ color: 'var(--brand-accent)', fontWeight: 700, fontSize: '13px', marginTop: '12px' }}>{line.slice(3)}</div>;
+        if (line.startsWith('# '))  return <div key={i} style={{ color: 'var(--brand-accent)', fontWeight: 700, fontSize: '14px', marginTop: '16px' }}>{line.slice(2)}</div>;
         if (line.startsWith('- ') || line.startsWith('* ')) return <div key={i} style={{ paddingLeft: 16 }}>• {line.slice(2)}</div>;
         if (line === '') return <div key={i} style={{ height: 5 }} />;
         return <div key={i}>{line}</div>;
@@ -524,8 +524,8 @@ export const TaskDetailPanel = ({ taskId }: { taskId: string }) => {
             title="Demander à Lia à propos de cette tâche"
             style={{
               display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px',
-              background: 'rgba(59,130,246,0.1)', color: '#3b82f6',
-              border: '1px solid rgba(59,130,246,0.25)', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: '12px',
+              background: 'color-mix(in srgb, var(--brand-accent) 10%, transparent)', color: 'var(--brand-accent)',
+              border: '1px solid color-mix(in srgb, var(--brand-accent) 25%, transparent)', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: '12px',
             }}>
             <MessageSquare size={13} />Ask Lia
           </button>
@@ -539,8 +539,8 @@ export const TaskDetailPanel = ({ taskId }: { taskId: string }) => {
           </button>
           <button onClick={handleSaveAsModele} disabled={savingModele} title="Sauvegarder comme modèle réutilisable" style={{
             display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px',
-            background: 'rgba(139,92,246,0.08)', color: 'var(--brand-accent)',
-            border: '1px solid rgba(139,92,246,0.2)', borderRadius: 8, cursor: savingModele ? 'wait' : 'pointer', fontWeight: 600, fontSize: '12px',
+            background: 'color-mix(in srgb, var(--brand-accent) 8%, transparent)', color: 'var(--brand-accent)',
+            border: '1px solid color-mix(in srgb, var(--brand-accent) 20%, transparent)', borderRadius: 8, cursor: savingModele ? 'wait' : 'pointer', fontWeight: 600, fontSize: '12px',
           }}>
             {savingModele ? <RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Layers size={13} />}
             → Modèle
@@ -578,7 +578,7 @@ export const TaskDetailPanel = ({ taskId }: { taskId: string }) => {
           <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
             display: 'flex', alignItems: 'center', gap: 5,
             padding: '6px 12px', borderRadius: 7, border: 'none', cursor: 'pointer',
-            background: activeTab === tab.id ? 'rgba(139,92,246,0.15)' : 'transparent',
+            background: activeTab === tab.id ? 'color-mix(in srgb, var(--brand-accent) 15%, transparent)' : 'transparent',
             color: activeTab === tab.id ? 'var(--brand-accent)' : 'var(--text-secondary)',
             fontWeight: 600, fontSize: '12px', transition: 'all 0.15s',
             borderBottom: activeTab === tab.id ? '2px solid var(--brand-accent)' : '2px solid transparent',
@@ -688,7 +688,7 @@ export const TaskDetailPanel = ({ taskId }: { taskId: string }) => {
                 ))}
                 <button onClick={() => setField('objectives', [...(formState?.objectives ?? []), ''])} style={{
                   display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px',
-                  background: 'rgba(139,92,246,0.08)', border: '1px dashed rgba(139,92,246,0.3)',
+                  background: 'color-mix(in srgb, var(--brand-accent) 8%, transparent)', border: '1px dashed color-mix(in srgb, var(--brand-accent) 30%, transparent)',
                   borderRadius: 8, color: 'var(--brand-accent)', cursor: 'pointer', fontWeight: 600, fontSize: '12px',
                 }}>
                   <Plus size={13} />Ajouter un objectif
@@ -818,7 +818,7 @@ export const TaskDetailPanel = ({ taskId }: { taskId: string }) => {
                 <div key={i} style={{ display: 'flex', gap: 14, position: 'relative', paddingBottom: 16, alignItems: 'flex-start' }}>
                   <div style={{
                     width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
-                    background: `${color}22`, border: `2px solid ${color}`,
+                    background: color.startsWith('var(') ? `color-mix(in srgb, ${color} 14%, transparent)` : `${color}22`, border: `2px solid ${color}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center', color, zIndex: 1,
                   }}>
                     {evt.type === 'completed' ? <CheckCircle2 size={11} /> : evt.type === 'failed' ? <AlertTriangle size={11} /> : <Clock size={11} />}

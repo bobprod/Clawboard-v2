@@ -303,7 +303,9 @@ export const CommandPalette = () => {
                         gap: 12,
                         width: "100%",
                         padding: "9px 10px",
-                        background: selected ? "rgba(255,255,255,0.06)" : "transparent",
+                        background: selected
+                          ? "color-mix(in srgb, var(--brand-accent) 12%, transparent)"
+                          : "transparent",
                         border: "none",
                         borderRadius: "var(--radius-md)",
                         cursor: "pointer",

@@ -173,7 +173,7 @@ const PROVIDERS: Provider[] = [
     id: "minimax",
     name: "MiniMax",
     category: "Asie",
-    color: "#7c3aed",
+    color: "#5e6ad2",
     logo: "⚡",
     docsUrl:
       "https://platform.minimaxi.com/user-center/basic-information/interface-key",
@@ -709,7 +709,9 @@ const LLMHealthCheck = () => {
             padding: "6px 14px",
             borderRadius: 8,
             border: "1px solid var(--border-subtle)",
-            background: loading ? "transparent" : "rgba(139,92,246,0.12)",
+            background: loading
+              ? "transparent"
+              : "color-mix(in srgb, var(--brand-accent) 12%, transparent)",
             color: "var(--brand-accent)",
             cursor: loading ? "wait" : "pointer",
             fontSize: "0.78rem",
@@ -860,8 +862,9 @@ const ApiKeysSection = () => {
           gap: 12,
           padding: "14px 18px",
           borderRadius: 12,
-          background: "rgba(139,92,246,0.07)",
-          border: "1px solid rgba(139,92,246,0.2)",
+          background: "color-mix(in srgb, var(--brand-accent) 7%, transparent)",
+          border:
+            "1px solid color-mix(in srgb, var(--brand-accent) 20%, transparent)",
         }}
       >
         <Zap size={18} color="var(--brand-accent)" />
@@ -1897,7 +1900,7 @@ const OllamaSection = () => {
                     textAlign: "left",
                     cursor: isFull ? "not-allowed" : "pointer",
                     background: isActive
-                      ? "rgba(139,92,246,0.1)"
+                      ? "color-mix(in srgb, var(--brand-accent) 10%, transparent)"
                       : "var(--bg-glass)",
                     border: `2px solid ${isActive ? "var(--brand-accent)" : isFull ? "rgba(239,68,68,0.3)" : "var(--border-subtle)"}`,
                     opacity: isFull ? 0.5 : 1,
@@ -2226,9 +2229,9 @@ const OllamaSection = () => {
                         cursor: "pointer",
                         background:
                           pullName === p.name
-                            ? "rgba(139,92,246,0.18)"
+                            ? "color-mix(in srgb, var(--brand-accent) 18%, transparent)"
                             : "var(--bg-glass)",
-                        border: `1px solid ${pullName === p.name ? "rgba(139,92,246,0.45)" : "var(--border-subtle)"}`,
+                        border: `1px solid ${pullName === p.name ? "color-mix(in srgb, var(--brand-accent) 45%, transparent)" : "var(--border-subtle)"}`,
                         color:
                           pullName === p.name
                             ? "var(--brand-accent)"
@@ -2298,8 +2301,10 @@ const OllamaSection = () => {
             <div
               style={{
                 marginTop: 12,
-                background: "rgba(139,92,246,0.06)",
-                border: "1px solid rgba(139,92,246,0.2)",
+                background:
+                  "color-mix(in srgb, var(--brand-accent) 6%, transparent)",
+                border:
+                  "1px solid color-mix(in srgb, var(--brand-accent) 20%, transparent)",
                 borderRadius: 8,
                 padding: "12px 14px",
               }}
@@ -2524,8 +2529,9 @@ const ServerSection = () => {
 
       <div
         style={{
-          background: "rgba(139,92,246,0.05)",
-          border: "1px solid rgba(139,92,246,0.2)",
+          background: "color-mix(in srgb, var(--brand-accent) 5%, transparent)",
+          border:
+            "1px solid color-mix(in srgb, var(--brand-accent) 20%, transparent)",
           padding: 20,
           borderRadius: 12,
         }}
@@ -2650,7 +2656,7 @@ const ProfileSection = () => {
 
   const avatarSrc =
     form.avatar ??
-    `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(form.username)}&backgroundColor=8b5cf6`;
+    `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(form.username)}&backgroundColor=5e6ad2`;
 
   const handleSave = () => {
     const current = readUser();
@@ -2752,7 +2758,8 @@ const ProfileSection = () => {
               height: 80,
               borderRadius: "50%",
               border: "2px solid var(--brand-primary)",
-              boxShadow: "0 0 20px rgba(139,92,246,0.3)",
+              boxShadow:
+                "0 0 20px color-mix(in srgb, var(--brand-accent) 30%, transparent)",
             }}
           />
           {form.demo && (
@@ -2830,8 +2837,10 @@ const ProfileSection = () => {
               style={{
                 padding: "6px 14px",
                 borderRadius: 8,
-                background: "rgba(139,92,246,0.08)",
-                border: "1px solid rgba(139,92,246,0.2)",
+                background:
+                  "color-mix(in srgb, var(--brand-accent) 8%, transparent)",
+                border:
+                  "1px solid color-mix(in srgb, var(--brand-accent) 20%, transparent)",
                 color: "var(--brand-accent)",
                 fontSize: "0.85rem",
                 display: "inline-block",
@@ -3434,7 +3443,8 @@ const NotificationsSection = () => {
             padding: "6px 14px",
             borderRadius: 8,
             border: "none",
-            background: "rgba(139,92,246,0.1)",
+            background:
+              "color-mix(in srgb, var(--brand-accent) 10%, transparent)",
             color: "var(--brand-accent)",
             fontSize: "0.8rem",
             cursor: testing === ch ? "not-allowed" : "pointer",
@@ -3968,9 +3978,9 @@ const PluginsSection = () => {
                 background: active
                   ? cfg
                     ? `${cfg.color}22`
-                    : "rgba(139,92,246,0.15)"
+                    : "color-mix(in srgb, var(--brand-accent) 15%, transparent)"
                   : "var(--bg-glass)",
-                border: `1px solid ${active ? (cfg?.color ?? "var(--brand-primary)") + "66" : "var(--border-subtle)"}`,
+                border: `1px solid ${active ? (cfg ? `${cfg.color}66` : "color-mix(in srgb, var(--brand-accent) 40%, transparent)") : "var(--border-subtle)"}`,
                 color: active
                   ? (cfg?.color ?? "var(--brand-accent)")
                   : "var(--text-muted)",
@@ -4055,7 +4065,8 @@ const PluginsSection = () => {
                         fontWeight: 700,
                         padding: "2px 8px",
                         borderRadius: 6,
-                        background: "rgba(139,92,246,0.15)",
+                        background:
+                          "color-mix(in srgb, var(--brand-accent) 15%, transparent)",
                         color: "var(--brand-accent)",
                       }}
                     >
@@ -4194,8 +4205,9 @@ const ExtensionHint = ({ text }: { text: string }) => (
       padding: "12px 16px",
       marginBottom: 18,
       borderRadius: "var(--radius-md, 12px)",
-      background: "rgba(139,92,246,0.08)",
-      border: "1px solid rgba(139,92,246,0.2)",
+      background: "color-mix(in srgb, var(--brand-accent) 8%, transparent)",
+      border:
+        "1px solid color-mix(in srgb, var(--brand-accent) 20%, transparent)",
       fontSize: "0.82rem",
       color: "var(--text-secondary)",
       lineHeight: 1.5,
@@ -4544,10 +4556,10 @@ export const SettingsModule = () => {
                       alignItems: "center",
                       gap: 12,
                       background: active
-                        ? "rgba(139,92,246,0.12)"
+                        ? "color-mix(in srgb, var(--brand-accent) 12%, transparent)"
                         : "transparent",
                       border: active
-                        ? "1px solid rgba(139,92,246,0.25)"
+                        ? "1px solid color-mix(in srgb, var(--brand-accent) 25%, transparent)"
                         : "1px solid transparent",
                       color: active
                         ? "var(--brand-accent)"

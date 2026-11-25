@@ -34,7 +34,7 @@ const BASE = "http://localhost:4000";
 const DRAFT_KEY = "clawboard-task-creator-draft";
 
 const MODELS = [
-  { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6", color: "#8b5cf6" },
+  { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6", color: "var(--brand-accent)" },
   {
     id: "nvidia/llama-3.1-nemotron-ultra-253b-v1",
     label: "⚡ Nemotron Ultra 253B",
@@ -51,7 +51,7 @@ const MODELS = [
     color: "#0064c8",
   },
   { id: "deepseek-ai/deepseek-v3.2", label: "DeepSeek V3.2", color: "#1a73e8" },
-  { id: "qwen/qwq-32b", label: "QwQ 32B", color: "#9333ea" },
+  { id: "qwen/qwq-32b", label: "QwQ 32B", color: "var(--brand-accent)" },
   { id: "moonshotai/kimi-k2.5", label: "Kimi K2.5", color: "#3b82f6" },
   {
     id: "gemini/gemini-2.5-flash",
@@ -390,8 +390,8 @@ function QrPairingModal({
                 gap: 6,
                 margin: "0 auto",
                 padding: "8px 18px",
-                background: "rgba(139,92,246,0.1)",
-                border: "1px solid rgba(139,92,246,0.3)",
+                background: "color-mix(in srgb, var(--brand-accent) 10%, transparent)",
+                border: "1px solid color-mix(in srgb, var(--brand-accent) 30%, transparent)",
                 borderRadius: 8,
                 color: "var(--brand-accent)",
                 cursor: "pointer",
@@ -742,14 +742,14 @@ function ValidationBanner({ items }: { items: WarnItem[] }) {
                 ? "rgba(239,68,68,0.08)"
                 : w.severity === "warn"
                   ? "rgba(245,158,11,0.08)"
-                  : "rgba(59,130,246,0.08)",
-            border: `1px solid ${w.severity === "error" ? "rgba(239,68,68,0.25)" : w.severity === "warn" ? "rgba(245,158,11,0.25)" : "rgba(59,130,246,0.25)"}`,
+                  : "color-mix(in srgb, var(--brand-accent) 8%, transparent)",
+            border: `1px solid ${w.severity === "error" ? "rgba(239,68,68,0.25)" : w.severity === "warn" ? "rgba(245,158,11,0.25)" : "color-mix(in srgb, var(--brand-accent) 25%, transparent)"}`,
             color:
               w.severity === "error"
                 ? "#ef4444"
                 : w.severity === "warn"
                   ? "#f59e0b"
-                  : "var(--brand-primary)",
+                  : "var(--brand-accent)",
           }}
         >
           {w.severity === "error" ? (
@@ -819,7 +819,7 @@ export const TaskCreator = () => {
         if (Array.isArray(data) && data.length > 0) {
           const map = new Map<string, typeof MODELS[0]>();
           for (const m of MODELS) map.set(m.id, m);
-          for (const m of data) map.set(m.id, { id: m.id, label: m.label, color: m.color || '#8b5cf6' });
+          for (const m of data) map.set(m.id, { id: m.id, label: m.label, color: m.color || 'var(--brand-accent)' });
           setAvailableModels(Array.from(map.values()));
         }
       })
@@ -1130,15 +1130,15 @@ export const TaskCreator = () => {
             gap: 12,
             padding: "12px 16px",
             borderRadius: 10,
-            background: "rgba(59,130,246,0.07)",
-            border: "1px solid rgba(59,130,246,0.28)",
+            background: "color-mix(in srgb, var(--brand-accent) 7%, transparent)",
+            border: "1px solid color-mix(in srgb, var(--brand-accent) 28%, transparent)",
             color: "var(--text-primary)",
             fontSize: "13px",
           }}
         >
           <RotateCcw
             size={15}
-            style={{ color: "var(--brand-primary)", flexShrink: 0 }}
+            style={{ color: "var(--brand-accent)", flexShrink: 0 }}
           />
           <span style={{ flex: 1, color: "var(--text-secondary)" }}>
             📝 Tu avais une tâche en cours —{" "}
@@ -1170,9 +1170,9 @@ export const TaskCreator = () => {
               borderRadius: 7,
               fontWeight: 700,
               fontSize: "12px",
-              background: "rgba(59,130,246,0.15)",
-              border: "1px solid rgba(59,130,246,0.4)",
-              color: "var(--brand-primary)",
+              background: "color-mix(in srgb, var(--brand-accent) 15%, transparent)",
+              border: "1px solid color-mix(in srgb, var(--brand-accent) 40%, transparent)",
+              color: "var(--brand-accent)",
               cursor: "pointer",
               whiteSpace: "nowrap",
             }}
@@ -1211,8 +1211,8 @@ export const TaskCreator = () => {
             gap: 10,
             padding: "10px 16px",
             borderRadius: 10,
-            background: "rgba(139,92,246,0.08)",
-            border: "1px solid rgba(139,92,246,0.25)",
+            background: "color-mix(in srgb, var(--brand-accent) 8%, transparent)",
+            border: "1px solid color-mix(in srgb, var(--brand-accent) 25%, transparent)",
             color: "var(--brand-accent)",
             fontSize: "13px",
           }}
@@ -1272,8 +1272,8 @@ export const TaskCreator = () => {
             padding: "8px 14px",
             borderRadius: 10,
             cursor: "pointer",
-            background: "rgba(139,92,246,0.08)",
-            border: "1px solid rgba(139,92,246,0.25)",
+            background: "color-mix(in srgb, var(--brand-accent) 8%, transparent)",
+            border: "1px solid color-mix(in srgb, var(--brand-accent) 25%, transparent)",
             color: "var(--brand-accent)",
             fontSize: "0.8rem",
             fontWeight: 600,
@@ -1456,9 +1456,9 @@ export const TaskCreator = () => {
                   height: 30,
                   borderRadius: 8,
                   background: enhancing
-                    ? "rgba(139,92,246,0.15)"
-                    : "rgba(139,92,246,0.1)",
-                  border: "1px solid rgba(139,92,246,0.3)",
+                    ? "color-mix(in srgb, var(--brand-accent) 15%, transparent)"
+                    : "color-mix(in srgb, var(--brand-accent) 10%, transparent)",
+                  border: "1px solid color-mix(in srgb, var(--brand-accent) 30%, transparent)",
                   color:
                     instructions.trim() && !enhancing
                       ? "var(--brand-accent)"
@@ -1954,8 +1954,8 @@ export const TaskCreator = () => {
                   alignItems: "center",
                   gap: 6,
                   padding: "7px 12px",
-                  background: "rgba(139,92,246,0.08)",
-                  border: "1px dashed rgba(139,92,246,0.3)",
+                  background: "color-mix(in srgb, var(--brand-accent) 8%, transparent)",
+                  border: "1px dashed color-mix(in srgb, var(--brand-accent) 30%, transparent)",
                   borderRadius: 8,
                   color: "var(--brand-accent)",
                   cursor: "pointer",
@@ -2073,9 +2073,9 @@ export const TaskCreator = () => {
               userSelect: "none",
               padding: "9px 14px",
               background: saveAsModel
-                ? "rgba(139,92,246,0.06)"
+                ? "color-mix(in srgb, var(--brand-accent) 6%, transparent)"
                 : "var(--bg-glass)",
-              border: `1px solid ${saveAsModel ? "rgba(139,92,246,0.3)" : "var(--border-subtle)"}`,
+              border: `1px solid ${saveAsModel ? "color-mix(in srgb, var(--brand-accent) 30%, transparent)" : "var(--border-subtle)"}`,
               borderRadius: 9,
               transition: "all 0.15s",
             }}
@@ -2152,7 +2152,7 @@ export const TaskCreator = () => {
                 padding: "10px 22px",
                 background: "var(--bg-glass)",
                 color: "var(--brand-accent)",
-                border: "1px solid rgba(139,92,246,0.4)",
+                border: "1px solid color-mix(in srgb, var(--brand-accent) 40%, transparent)",
                 borderRadius: 10,
                 cursor: !canSave || saving ? "not-allowed" : "pointer",
                 fontWeight: 600,
@@ -2179,7 +2179,6 @@ export const TaskCreator = () => {
                 fontWeight: 600,
                 fontSize: "0.875rem",
                 opacity: !canSave || saving ? 0.6 : 1,
-                boxShadow: "0 4px 14px rgba(139,92,246,0.35)",
               }}
             >
               <Play size={16} />

@@ -73,9 +73,9 @@ interface PlanExecuteResponse {
   results?: PlanExecuteResult[];
 }
 
-/** Badges d'étape : task=violet, modele=bleu, cron=orange, skill=vert, note=gris. */
+/** Badges d'étape : task=accent, modele=bleu, cron=orange, skill=vert, note=gris. */
 const STEP_TYPE_META: Record<string, { color: string; label: string }> = {
-  task: { color: "#8b5cf6", label: "Tâche" },
+  task: { color: "var(--brand-accent)", label: "Tâche" },
   modele: { color: "#3b82f6", label: "Modèle" },
   cron: { color: "#f59e0b", label: "Récurrence" },
   skill: { color: "#10b981", label: "Skill" },
@@ -636,60 +636,63 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
 
   return (
     <>
-      {/* ── Floating bubble ────────────────────────────────────────────── */}
-      <button
-        onClick={() => setOpen((v) => !v)}
-        title={open ? "Fermer le chat agent" : "Ouvrir le chat agent"}
-        style={{
-          position: "fixed",
-          bottom: 28,
-          right: 28,
-          zIndex: 1000,
-          width: 54,
-          height: 54,
-          borderRadius: "50%",
-          background:
-            "linear-gradient(135deg, var(--brand-primary), var(--brand-accent))",
-          border: "none",
-          cursor: "pointer",
-          color: "#fff",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          boxShadow: "0 6px 24px rgba(139,92,246,0.45)",
-          transition: "transform 0.2s, box-shadow 0.2s",
-        }}
-        onMouseOver={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.transform =
-            "scale(1.08)";
-        }}
-        onMouseOut={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
-        }}
-      >
-        {open ? <ChevronDown size={22} /> : <MessageSquare size={22} />}
-        {!open && messages.length > 0 && (
-          <span
-            style={{
-              position: "absolute",
-              top: -4,
-              right: -4,
-              background: "#ef4444",
-              color: "#fff",
-              fontSize: "9px",
-              fontWeight: 700,
-              borderRadius: "50%",
-              width: 18,
-              height: 18,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {messages.filter((m) => m.role === "assistant" && m.done).length}
-          </span>
-        )}
-      </button>
+      {/* ── Floating bubble (masqué quand le panneau est ouvert) ───────── */}
+      {!open && (
+        <button
+          onClick={() => setOpen(true)}
+          title="Ouvrir le chat agent"
+          aria-label="Ouvrir le chat agent"
+          style={{
+            position: "fixed",
+            bottom: 24,
+            right: 24,
+            zIndex: 1000,
+            width: 50,
+            height: 50,
+            borderRadius: "50%",
+            background: "var(--brand-accent)",
+            border:
+              "1px solid color-mix(in srgb, var(--brand-accent) 40%, rgba(255,255,255,0.16))",
+            cursor: "pointer",
+            color: "#fff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "var(--shadow-lg)",
+            transition: "transform 0.15s ease, background 0.15s ease",
+          }}
+          onMouseOver={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.transform =
+              "scale(1.05)";
+          }}
+          onMouseOut={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
+          }}
+        >
+          <MessageSquare size={20} />
+          {messages.length > 0 && (
+            <span
+              style={{
+                position: "absolute",
+                top: -3,
+                right: -3,
+                background: "var(--status-error)",
+                color: "#fff",
+                fontSize: "9px",
+                fontWeight: 700,
+                borderRadius: "50%",
+                width: 18,
+                height: 18,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {messages.filter((m) => m.role === "assistant" && m.done).length}
+            </span>
+          )}
+        </button>
+      )}
 
       {/* ── Chat panel ─────────────────────────────────────────────────── */}
       {open && (
@@ -714,22 +717,23 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
           }}
           style={{
             position: "fixed",
-            bottom: 92,
-            right: 28,
+            bottom: 20,
+            right: 20,
             zIndex: 1000,
-            width: 400,
-            height: 560,
+            width: 420,
+            maxWidth: "calc(100vw - 32px)",
+            height: "min(640px, calc(100vh - 48px))",
             background: dragOver ? "var(--bg-card)" : "var(--bg-surface)",
             border: dragOver
               ? "1px dashed var(--brand-accent)"
               : "1px solid var(--border-subtle)",
-            borderRadius: 18,
+            borderRadius: "var(--radius-lg)",
             display: "flex",
             flexDirection: "column",
             boxShadow: dragOver
-              ? "0 12px 48px rgba(0,0,0,0.45), inset 0 0 0 2px rgba(139,92,246,0.2)"
-              : "0 12px 48px rgba(0,0,0,0.45)",
-            animation: "chatSlideUp 0.2s ease",
+              ? "var(--shadow-lg), inset 0 0 0 2px color-mix(in srgb, var(--brand-accent) 20%, transparent)"
+              : "var(--shadow-lg)",
+            animation: "chatSlideUp 0.18s ease",
             overflow: "hidden",
           }}
         >
@@ -744,12 +748,13 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 8,
-                background: "rgba(139,92,246,0.1)",
-                borderRadius: 18,
+                background:
+                  "color-mix(in srgb, var(--brand-accent) 12%, transparent)",
+                borderRadius: "var(--radius-lg)",
                 pointerEvents: "none",
                 color: "var(--brand-accent)",
-                fontSize: "14px",
-                fontWeight: 700,
+                fontSize: "13.5px",
+                fontWeight: 600,
               }}
             >
               <Paperclip size={16} />
@@ -759,18 +764,29 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
           {/* Header */}
           <div
             style={{
-              padding: "14px 18px",
-              background:
-                "linear-gradient(135deg, rgba(59,130,246,0.12), rgba(139,92,246,0.12))",
+              padding: "11px 14px",
+              background: "var(--bg-surface-elevated)",
               borderBottom: "1px solid var(--border-subtle)",
               display: "flex",
               alignItems: "center",
-              gap: 10,
+              gap: 8,
+              flexShrink: 0,
             }}
           >
-            <Bot size={18} color="var(--brand-accent)" />
-            <span style={{ fontWeight: 700, fontSize: "14px", flex: 1 }}>
-              Chat Agent
+            <Bot size={17} color="var(--brand-accent)" />
+            <span
+              style={{
+                fontWeight: 600,
+                fontSize: "13.5px",
+                color: "var(--text-primary)",
+                flex: 1,
+                minWidth: 0,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Lia
             </span>
             {/* Sélecteur de mode de Lia (C3) : Manager / Tuteur / Expert */}
             <div
@@ -778,8 +794,8 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
                 display: "flex",
                 gap: 2,
                 padding: 2,
-                borderRadius: 8,
-                background: "rgba(255,255,255,0.04)",
+                borderRadius: "var(--radius-sm)",
+                background: "var(--bg-surface)",
                 border: "1px solid var(--border-subtle)",
               }}
             >
@@ -795,7 +811,7 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
                     style={{
                       width: 26,
                       height: 24,
-                      borderRadius: 6,
+                      borderRadius: 4,
                       border: "none",
                       cursor: "pointer",
                       display: "flex",
@@ -805,7 +821,7 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
                         ? "var(--brand-accent)"
                         : "transparent",
                       color: active ? "#fff" : "var(--text-muted)",
-                      transition: "all 0.2s",
+                      transition: "all 0.15s",
                     }}
                   >
                     <ModeIcon size={13} />
@@ -819,10 +835,10 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
               onChange={(e) => setAgent(e.target.value)}
               style={{
                 padding: "4px 8px",
-                borderRadius: 7,
+                borderRadius: "var(--radius-sm)",
                 fontSize: "12px",
-                fontWeight: 600,
-                background: "var(--bg-glass)",
+                fontWeight: 500,
+                background: "var(--bg-surface)",
                 border: "1px solid var(--border-subtle)",
                 color: "var(--text-primary)",
                 cursor: "pointer",
@@ -843,29 +859,51 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
                 }}
                 title="Effacer la conversation"
                 style={{
-                  background: "none",
-                  border: "none",
+                  background: "transparent",
+                  border: "1px solid var(--border-subtle)",
                   cursor: "pointer",
                   color: "var(--text-muted)",
-                  display: "flex",
-                  padding: 4,
-                  borderRadius: 5,
+                  fontSize: "11px",
+                  fontWeight: 500,
+                  padding: "3px 7px",
+                  borderRadius: "var(--radius-sm)",
                 }}
               >
-                <X size={14} />
+                Effacer
               </button>
             )}
+            <button
+              onClick={() => setOpen(false)}
+              title="Fermer le panneau"
+              aria-label="Fermer le panneau"
+              style={{
+                width: 26,
+                height: 26,
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                color: "var(--text-muted)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: "var(--radius-sm)",
+                flexShrink: 0,
+              }}
+            >
+              <ChevronDown size={16} />
+            </button>
           </div>
 
           {/* Messages */}
           <div
             style={{
               flex: 1,
+              minHeight: 0,
               overflowY: "auto",
               padding: "14px 16px",
               display: "flex",
               flexDirection: "column",
-              gap: 10,
+              gap: 12,
             }}
           >
             {messages.length === 0 && (
@@ -878,10 +916,10 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
                   justifyContent: "center",
                   gap: 10,
                   color: "var(--text-muted)",
-                  opacity: 0.5,
+                  opacity: 0.65,
                 }}
               >
-                <Bot size={36} />
+                <Bot size={32} />
                 <div
                   style={{
                     fontSize: "13px",
@@ -894,159 +932,173 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
                     {agent}
                   </strong>
                   <br />
-                  ou demandez-lui d'exécuter une tâche
+                  ou demandez-lui un plan d'exécution
                 </div>
               </div>
             )}
 
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                style={{
-                  display: "flex",
-                  flexDirection: msg.role === "user" ? "row-reverse" : "row",
-                  gap: 8,
-                  alignItems: "flex-start",
-                }}
-              >
-                {/* Avatar */}
+            {messages.map((msg) => {
+              const hasPlans = plans.some((p) => p.msgId === msg.id);
+              return (
                 <div
+                  key={msg.id}
                   style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: "50%",
-                    flexShrink: 0,
                     display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    background:
-                      msg.role === "user"
-                        ? "rgba(139,92,246,0.2)"
-                        : msg.role === "tool"
-                          ? "rgba(245,158,11,0.15)"
-                          : "rgba(59,130,246,0.2)",
-                    color:
-                      msg.role === "user"
-                        ? "var(--brand-accent)"
-                        : msg.role === "tool"
-                          ? "#f59e0b"
-                          : "var(--brand-primary)",
+                    flexDirection: msg.role === "user" ? "row-reverse" : "row",
+                    gap: 8,
+                    alignItems: "flex-start",
                   }}
                 >
-                  {msg.role === "user" ? (
-                    <User size={14} />
-                  ) : msg.role === "tool" ? (
-                    <Wrench size={12} />
-                  ) : (
-                    <Bot size={14} />
-                  )}
-                </div>
+                  {/* Avatar */}
+                  <div
+                    style={{
+                      width: 26,
+                      height: 26,
+                      borderRadius: "50%",
+                      flexShrink: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background:
+                        msg.role === "user"
+                          ? "color-mix(in srgb, var(--brand-accent) 16%, transparent)"
+                          : msg.role === "tool"
+                            ? "rgba(245,158,11,0.14)"
+                            : "var(--bg-surface-elevated)",
+                      border: "1px solid var(--border-subtle)",
+                      color:
+                        msg.role === "user"
+                          ? "var(--brand-accent)"
+                          : msg.role === "tool"
+                            ? "#f59e0b"
+                            : "var(--text-secondary)",
+                    }}
+                  >
+                    {msg.role === "user" ? (
+                      <User size={13} />
+                    ) : msg.role === "tool" ? (
+                      <Wrench size={12} />
+                    ) : (
+                      <Bot size={13} />
+                    )}
+                  </div>
 
-                <div
-                  style={{
-                    maxWidth: "80%",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 3,
-                    alignItems: msg.role === "user" ? "flex-end" : "flex-start",
-                  }}
-                >
-                  {/* Thinking trace */}
-                  {msg.thinking && (
-                    <div
-                      style={{
-                        fontSize: "10px",
-                        fontStyle: "italic",
-                        color: "var(--text-muted)",
-                        background: "rgba(255,255,255,0.03)",
-                        border: "1px solid rgba(255,255,255,0.06)",
-                        borderRadius: 6,
-                        padding: "4px 8px",
-                        maxHeight: 60,
-                        overflow: "hidden",
-                      }}
-                    >
-                      💭 {msg.thinking.slice(0, 120)}
-                      {msg.thinking.length > 120 ? "…" : ""}
-                    </div>
-                  )}
-                  {/* Tool call */}
-                  {msg.role === "tool" && (
-                    <div
-                      style={{
-                        fontSize: "11px",
-                        fontFamily: "var(--mono)",
-                        background: "rgba(245,158,11,0.07)",
-                        border: "1px solid rgba(245,158,11,0.2)",
-                        borderRadius: 8,
-                        padding: "6px 10px",
-                        color: "#f59e0b",
-                      }}
-                    >
-                      ⚙️ <strong>{msg.tool}</strong>({msg.content.slice(0, 60)}
-                      {msg.content.length > 60 ? "…" : ""})
-                    </div>
-                  )}
-                  {/* Bubble */}
-                  {msg.role !== "tool" && (
-                    <div
-                      style={{
-                        padding: "9px 13px",
-                        borderRadius:
-                          msg.role === "user"
-                            ? "14px 14px 4px 14px"
-                            : "14px 14px 14px 4px",
-                        background:
-                          msg.role === "user"
-                            ? "rgba(139,92,246,0.18)"
-                            : "var(--bg-glass)",
-                        border: `1px solid ${msg.role === "user" ? "rgba(139,92,246,0.3)" : "var(--border-subtle)"}`,
-                        fontSize: "13px",
-                        lineHeight: 1.55,
-                        color: "var(--text-primary)",
-                        whiteSpace: "pre-wrap",
-                        wordBreak: "break-word",
-                      }}
-                    >
-                      {msg.content ||
-                        (!msg.done ? (
-                          <Loader2
-                            size={13}
-                            style={{
-                              animation: "spin 1s linear infinite",
-                              opacity: 0.6,
-                            }}
-                          />
-                        ) : (
-                          ""
-                        ))}
-                    </div>
-                  )}
-                  {/* Carte de plan (B5) rattachée à ce message assistant */}
-                  {plans
-                    .filter((p) => p.msgId === msg.id)
-                    .map((card) => (
-                      <PlanCardView
-                        key={card.id}
-                        card={card}
-                        onApprove={(id) => void approvePlan(id)}
-                        onReject={rejectPlan}
-                      />
-                    ))}
+                  <div
+                    style={{
+                      maxWidth: hasPlans ? "90%" : "82%",
+                      flex: hasPlans ? 1 : undefined,
+                      minWidth: 0,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 4,
+                      alignItems:
+                        msg.role === "user" ? "flex-end" : "flex-start",
+                    }}
+                  >
+                    {/* Thinking trace */}
+                    {msg.thinking && (
+                      <div
+                        style={{
+                          fontSize: "10px",
+                          fontStyle: "italic",
+                          color: "var(--text-muted)",
+                          background: "var(--bg-surface-elevated)",
+                          border: "1px solid var(--border-subtle)",
+                          borderRadius: "var(--radius-sm)",
+                          padding: "4px 8px",
+                          maxHeight: 60,
+                          overflow: "hidden",
+                        }}
+                      >
+                        💭 {msg.thinking.slice(0, 120)}
+                        {msg.thinking.length > 120 ? "…" : ""}
+                      </div>
+                    )}
+                    {/* Tool call */}
+                    {msg.role === "tool" && (
+                      <div
+                        style={{
+                          fontSize: "11px",
+                          fontFamily: "var(--mono)",
+                          background: "rgba(245,158,11,0.07)",
+                          border: "1px solid rgba(245,158,11,0.2)",
+                          borderRadius: "var(--radius-md)",
+                          padding: "6px 10px",
+                          color: "#f59e0b",
+                        }}
+                      >
+                        ⚙️ <strong>{msg.tool}</strong>(
+                        {msg.content.slice(0, 60)}
+                        {msg.content.length > 60 ? "…" : ""})
+                      </div>
+                    )}
+                    {/* Bubble */}
+                    {msg.role !== "tool" && (
+                      <div
+                        style={{
+                          padding: "8px 12px",
+                          borderRadius:
+                            msg.role === "user"
+                              ? "12px 12px 4px 12px"
+                              : "12px 12px 12px 4px",
+                          background:
+                            msg.role === "user"
+                              ? "color-mix(in srgb, var(--brand-accent) 14%, transparent)"
+                              : "var(--bg-surface-elevated)",
+                          border: `1px solid ${
+                            msg.role === "user"
+                              ? "color-mix(in srgb, var(--brand-accent) 28%, transparent)"
+                              : "var(--border-subtle)"
+                          }`,
+                          fontSize: "13px",
+                          lineHeight: 1.55,
+                          color: "var(--text-primary)",
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-word",
+                        }}
+                      >
+                        {msg.content ||
+                          (!msg.done ? (
+                            <Loader2
+                              size={13}
+                              style={{
+                                animation: "spin 1s linear infinite",
+                                opacity: 0.6,
+                              }}
+                            />
+                          ) : (
+                            ""
+                          ))}
+                      </div>
+                    )}
+                    {/* Carte de plan (B5) rattachée à ce message assistant */}
+                    {plans
+                      .filter((p) => p.msgId === msg.id)
+                      .map((card) => (
+                        <PlanCardView
+                          key={card.id}
+                          card={card}
+                          onApprove={(id) => void approvePlan(id)}
+                          onReject={rejectPlan}
+                        />
+                      ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             <div ref={bottomRef} />
           </div>
 
-          {/* Input */}
+          {/* Input — Composer unifié (style Linear / Claude) */}
           <div
             style={{
-              padding: "10px 14px",
+              padding: "10px 12px 12px",
               borderTop: "1px solid var(--border-subtle)",
+              background: "var(--bg-surface-elevated)",
               display: "flex",
               flexDirection: "column",
               gap: 8,
+              flexShrink: 0,
             }}
           >
             {/* Indicateur micro : enregistrement / transcription / erreur discrète */}
@@ -1091,7 +1143,7 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
                 )}
               </div>
             )}
-            {/* Message discret lié aux pièces jointes (même style que le micro) */}
+            {/* Message discret lié aux pièces jointes */}
             {fileNote && (
               <div
                 style={{
@@ -1103,14 +1155,14 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
                 {fileNote}
               </div>
             )}
-            {/* Indicateur mode Plan armé (B5) : le prochain envoi génèrera un plan */}
+            {/* Indicateur mode Plan armé (B5) */}
             {planArmed && (
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
                   gap: 6,
-                  fontSize: "12px",
+                  fontSize: "11.5px",
                   lineHeight: 1.4,
                   fontWeight: 600,
                   color: "var(--brand-accent)",
@@ -1121,7 +1173,7 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
                 d'exécution
               </div>
             )}
-            {/* Message discret lié aux plans (exécution impossible, réseau…) */}
+            {/* Message discret lié aux plans */}
             {planNote && (
               <div
                 style={{
@@ -1148,10 +1200,10 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
                       display: "inline-flex",
                       alignItems: "center",
                       gap: 6,
-                      padding: "4px 8px",
-                      borderRadius: 8,
-                      fontSize: "12px",
-                      background: "var(--bg-glass)",
+                      padding: "3px 8px",
+                      borderRadius: "var(--radius-sm)",
+                      fontSize: "11.5px",
+                      background: "var(--bg-surface)",
                       border: `1px solid ${
                         f.kind === "binary" && f.status === "error"
                           ? "var(--status-error)"
@@ -1208,170 +1260,198 @@ export function AgentChat({ pageContext }: { pageContext?: string }) {
                 ))}
               </div>
             )}
-            <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
-              {/* Sélecteur de fichiers (ouvert par le bouton 📎) */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                hidden
-                onChange={(e) => {
-                  void addFiles(e.target.files ?? []);
-                  e.target.value = ""; // permet de rechoisir le même fichier
-                }}
-              />
+
+            {/* Sélecteur de fichiers (ouvert par le bouton 📎) */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              hidden
+              onChange={(e) => {
+                void addFiles(e.target.files ?? []);
+                e.target.value = "";
+              }}
+            />
+
+            {/* Conteneur composer unifié */}
+            <div
+              style={{
+                borderRadius: "var(--radius-lg)",
+                background: "var(--bg-surface)",
+                border: planArmed
+                  ? "1px solid color-mix(in srgb, var(--brand-accent) 45%, var(--border-subtle))"
+                  : "1px solid var(--border-subtle)",
+                padding: "8px 10px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+                transition: "border-color 0.15s",
+              }}
+            >
               <textarea
                 ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKey}
                 rows={1}
-                placeholder={`Message à ${agent}… (Entrée pour envoyer)`}
+                placeholder="Demander à Lia… (Entrée pour envoyer)"
                 disabled={busy}
                 style={{
-                  flex: 1,
-                  padding: "9px 12px",
-                  borderRadius: 10,
+                  width: "100%",
+                  minHeight: 36,
+                  maxHeight: 120,
+                  padding: "2px 2px",
+                  border: "none",
                   resize: "none",
-                  background: "var(--bg-glass)",
-                  border: "1px solid var(--border-subtle)",
+                  background: "transparent",
                   color: "var(--text-primary)",
                   fontSize: "13px",
                   outline: "none",
                   fontFamily: "inherit",
                   lineHeight: 1.45,
-                  maxHeight: 120,
-                  transition: "border-color 0.2s",
                 }}
-                onFocus={(e) =>
-                  (e.target.style.borderColor = "var(--brand-accent)")
-                }
-                onBlur={(e) =>
-                  (e.target.style.borderColor = "var(--border-subtle)")
-                }
               />
-              {/* Bouton pièce jointe (📎) — à côté du micro */}
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                title="Joindre des fichiers (texte ou binaire) — ou glisse-les sur le chat"
+
+              {/* Toolbar interne en bas du composer */}
+              <div
                 style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 10,
-                  border: "none",
-                  cursor: "pointer",
-                  background: "rgba(255,255,255,0.06)",
-                  color: "var(--text-secondary)",
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                  transition: "all 0.2s",
+                  justifyContent: "space-between",
+                  gap: 6,
                 }}
               >
-                <Paperclip size={15} />
-              </button>
-              {/* Bouton Plan (B5) : arme le prochain envoi en mode plan */}
-              <button
-                onClick={() => setPlanArmed((v) => !v)}
-                title={
-                  planArmed
-                    ? "Mode Plan armé : le prochain message générera un plan (cliquer pour annuler)"
-                    : "Générer un plan d'exécution au prochain envoi"
-                }
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 10,
-                  border: planArmed ? "1px solid var(--brand-accent)" : "none",
-                  cursor: "pointer",
-                  background: planArmed
-                    ? "rgba(139,92,246,0.22)"
-                    : "rgba(255,255,255,0.06)",
-                  color: planArmed
-                    ? "var(--brand-accent)"
-                    : "var(--text-secondary)",
-                  boxShadow: planArmed
-                    ? "0 0 12px rgba(139,92,246,0.35)"
-                    : "none",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                  transition: "all 0.2s",
-                }}
-              >
-                <Map size={15} />
-              </button>
-              <button
-                onClick={handleMic}
-                disabled={voice.starting || transcribing}
-                title={
-                  voice.recording
-                    ? "Arrêter l'enregistrement et transcrire"
-                    : "Dicter un message au micro"
-                }
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 10,
-                  border: "none",
-                  cursor:
-                    voice.starting || transcribing ? "not-allowed" : "pointer",
-                  background: voice.recording
-                    ? "var(--status-error)"
-                    : "rgba(255,255,255,0.06)",
-                  color: voice.recording ? "#fff" : "var(--text-secondary)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                  boxShadow: voice.recording
-                    ? "0 0 14px rgba(239,68,68,0.4)"
-                    : "none",
-                  transition: "all 0.2s",
-                }}
-              >
-                {voice.starting ? (
-                  <Loader2
-                    size={15}
-                    style={{ animation: "spin 1s linear infinite" }}
-                  />
-                ) : voice.recording ? (
-                  <Square size={12} fill="currentColor" />
-                ) : (
-                  <Mic size={15} />
-                )}
-              </button>
-              <button
-                onClick={sendMessage}
-                disabled={!canSend}
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 10,
-                  border: "none",
-                  cursor: canSend ? "pointer" : "not-allowed",
-                  background: canSend
-                    ? "var(--brand-accent)"
-                    : "rgba(255,255,255,0.06)",
-                  color: canSend ? "#fff" : "var(--text-muted)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                  transition: "all 0.2s",
-                }}
-              >
-                {busy ? (
-                  <Loader2
-                    size={15}
-                    style={{ animation: "spin 1s linear infinite" }}
-                  />
-                ) : (
-                  <Send size={15} />
-                )}
-              </button>
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  {/* Bouton pièce jointe (📎) */}
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Joindre des fichiers (texte ou binaire) — ou glisse-les sur le chat"
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: "var(--radius-sm)",
+                      border: "none",
+                      cursor: "pointer",
+                      background: "transparent",
+                      color: "var(--text-secondary)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      transition: "background 0.15s, color 0.15s",
+                    }}
+                  >
+                    <Paperclip size={14} />
+                  </button>
+
+                  {/* Bouton Mode Plan (🗺️ + label "Plan") */}
+                  <button
+                    onClick={() => setPlanArmed((v) => !v)}
+                    title={
+                      planArmed
+                        ? "Mode Plan armé : le prochain message générera un plan (cliquer pour annuler)"
+                        : "Générer un plan d'exécution au prochain envoi"
+                    }
+                    style={{
+                      height: 28,
+                      padding: "0 8px",
+                      borderRadius: "var(--radius-sm)",
+                      border: planArmed
+                        ? "1px solid color-mix(in srgb, var(--brand-accent) 40%, transparent)"
+                        : "1px solid transparent",
+                      cursor: "pointer",
+                      background: planArmed
+                        ? "color-mix(in srgb, var(--brand-accent) 14%, transparent)"
+                        : "transparent",
+                      color: planArmed
+                        ? "var(--brand-accent)"
+                        : "var(--text-secondary)",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 5,
+                      fontSize: "11.5px",
+                      fontWeight: 600,
+                      fontFamily: "inherit",
+                      flexShrink: 0,
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    <Map size={13} />
+                    <span>Plan</span>
+                  </button>
+
+                  {/* Bouton Micro (🎙) */}
+                  <button
+                    onClick={handleMic}
+                    disabled={voice.starting || transcribing}
+                    title={
+                      voice.recording
+                        ? "Arrêter l'enregistrement et transcrire"
+                        : "Dicter un message au micro"
+                    }
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: "var(--radius-sm)",
+                      border: "none",
+                      cursor:
+                        voice.starting || transcribing
+                          ? "not-allowed"
+                          : "pointer",
+                      background: voice.recording
+                        ? "var(--status-error)"
+                        : "transparent",
+                      color: voice.recording ? "#fff" : "var(--text-secondary)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    {voice.starting ? (
+                      <Loader2
+                        size={14}
+                        style={{ animation: "spin 1s linear infinite" }}
+                      />
+                    ) : voice.recording ? (
+                      <Square size={11} fill="currentColor" />
+                    ) : (
+                      <Mic size={14} />
+                    )}
+                  </button>
+                </div>
+
+                {/* Bouton Envoyer */}
+                <button
+                  onClick={sendMessage}
+                  disabled={!canSend}
+                  title="Envoyer (Entrée)"
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: "var(--radius-sm)",
+                    border: "none",
+                    cursor: canSend ? "pointer" : "not-allowed",
+                    background: canSend ? "var(--brand-accent)" : "transparent",
+                    color: canSend ? "#fff" : "var(--text-muted)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {busy ? (
+                    <Loader2
+                      size={14}
+                      style={{ animation: "spin 1s linear infinite" }}
+                    />
+                  ) : (
+                    <Send size={14} />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1416,16 +1496,20 @@ function PlanCardView({
       style={{
         alignSelf: "stretch",
         marginTop: 4,
-        padding: "10px 12px",
+        padding: "12px 14px",
         borderRadius: "var(--radius-lg)",
         background: "var(--bg-card)",
-        border: `1px solid ${rejected ? "var(--border-subtle)" : "var(--brand-accent)"}`,
+        border: `1px solid ${
+          rejected
+            ? "var(--border-subtle)"
+            : "color-mix(in srgb, var(--brand-accent) 45%, var(--border-subtle))"
+        }`,
         boxShadow: "var(--shadow-sm)",
         opacity: rejected ? 0.55 : 1,
         filter: rejected ? "grayscale(0.7)" : undefined,
         display: "flex",
         flexDirection: "column",
-        gap: 8,
+        gap: 10,
         pointerEvents: rejected ? "none" : undefined,
         transition: "opacity 0.3s",
       }}
@@ -1475,36 +1559,37 @@ function PlanCardView({
       )}
 
       {/* Étapes : badge de type coloré + nom + description courte */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {steps.map((step) => {
           const meta =
             STEP_TYPE_META[step.type ?? "task"] ?? STEP_TYPE_META.task;
           return (
             <div
               key={step.id}
-              style={{ display: "flex", gap: 7, alignItems: "flex-start" }}
+              style={{ display: "flex", gap: 8, alignItems: "flex-start" }}
             >
               <span
                 style={{
                   flexShrink: 0,
-                  marginTop: 1,
+                  marginTop: 2,
                   fontSize: "9.5px",
-                  fontWeight: 700,
-                  padding: "1px 6px",
+                  fontWeight: 600,
+                  padding: "2px 7px",
                   borderRadius: 99,
-                  background: `${meta.color}1a`,
+                  background: `color-mix(in srgb, ${meta.color} 14%, transparent)`,
                   color: meta.color,
-                  border: `1px solid ${meta.color}45`,
+                  border: `1px solid color-mix(in srgb, ${meta.color} 30%, transparent)`,
                   whiteSpace: "nowrap",
                 }}
               >
                 {meta.label}
               </span>
-              <div style={{ minWidth: 0 }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
                 <div
                   style={{
                     fontWeight: 600,
                     fontSize: "12px",
+                    lineHeight: 1.45,
                     color: "var(--text-primary)",
                   }}
                 >
@@ -1515,11 +1600,12 @@ function PlanCardView({
                     title={step.description}
                     style={{
                       fontSize: "11px",
-                      lineHeight: 1.4,
+                      lineHeight: 1.5,
                       color: "var(--text-secondary)",
+                      marginTop: 2,
                     }}
                   >
-                    {shortenLine(step.description, 90)}
+                    {shortenLine(step.description, 110)}
                   </div>
                 )}
               </div>
@@ -1533,23 +1619,25 @@ function PlanCardView({
         <div
           style={{
             display: "flex",
-            gap: 6,
+            gap: 8,
             alignItems: "flex-start",
-            padding: "6px 8px",
+            padding: "8px 10px",
             borderRadius: "var(--radius-md)",
-            background: "rgba(245,158,11,0.06)",
-            border: "1px solid rgba(245,158,11,0.22)",
+            background:
+              "color-mix(in srgb, var(--status-warning) 10%, transparent)",
+            border:
+              "1px solid color-mix(in srgb, var(--status-warning) 28%, transparent)",
           }}
         >
           <AlertTriangle
-            size={11}
+            size={12}
             color="var(--status-warning)"
-            style={{ flexShrink: 0, marginTop: 1 }}
+            style={{ flexShrink: 0, marginTop: 2 }}
           />
           <div
             style={{
               fontSize: "11px",
-              lineHeight: 1.45,
+              lineHeight: 1.5,
               color: "var(--status-warning)",
             }}
           >
