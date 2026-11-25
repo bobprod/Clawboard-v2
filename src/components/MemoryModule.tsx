@@ -129,7 +129,7 @@ function renderMarkdown(md: string): string {
     .replace(/\*(.+?)\*/g, '<em style="opacity:0.8">$1</em>')
     .replace(
       /`([^`]+)`/g,
-      '<code style="background:rgba(139,92,246,0.12);color:var(--brand-accent);padding:1px 5px;border-radius:3px;font-size:0.85em;font-family:var(--mono)">$1</code>',
+      '<code style="background:color-mix(in srgb, var(--brand-accent) 12%, transparent);color:var(--brand-accent);padding:1px 5px;border-radius:3px;font-size:0.85em;font-family:var(--mono)">$1</code>',
     )
     .replace(
       /^---+$/gm,
@@ -623,9 +623,9 @@ export const MemoryModule = () => {
                 cursor: "pointer",
                 background:
                   selected?.title === f.label
-                    ? "rgba(139,92,246,0.15)"
+                    ? "color-mix(in srgb, var(--brand-accent) 15%, transparent)"
                     : "var(--bg-glass)",
-                border: `1px solid ${selected?.title === f.label ? "rgba(139,92,246,0.4)" : "var(--border-subtle)"}`,
+                border: `1px solid ${selected?.title === f.label ? "color-mix(in srgb, var(--brand-accent) 40%, transparent)" : "var(--border-subtle)"}`,
                 color:
                   selected?.title === f.label
                     ? "var(--brand-accent)"
@@ -914,9 +914,9 @@ export const MemoryModule = () => {
                 padding: "3px 8px",
                 borderRadius: 6,
                 background: semanticMode
-                  ? "rgba(139,92,246,0.15)"
+                  ? "color-mix(in srgb, var(--brand-accent) 15%, transparent)"
                   : "rgba(255,255,255,0.05)",
-                border: `1px solid ${semanticMode ? "rgba(139,92,246,0.3)" : "var(--border-subtle)"}`,
+                border: `1px solid ${semanticMode ? "color-mix(in srgb, var(--brand-accent) 30%, transparent)" : "var(--border-subtle)"}`,
                 color: semanticMode
                   ? "var(--brand-accent)"
                   : "var(--text-muted)",
@@ -1553,7 +1553,7 @@ export const MemoryModule = () => {
       >
         <div
           style={{
-            background: "rgba(139,92,246,0.12)",
+            background: "color-mix(in srgb, var(--brand-accent) 12%, transparent)",
             padding: 7,
             borderRadius: 9,
             color: "var(--brand-accent)",

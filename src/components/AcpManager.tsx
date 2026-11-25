@@ -225,7 +225,7 @@ export function AcpManager() {
   if (loading) {
     return (
       <div className="glass-panel p-6" style={{ textAlign: "center", padding: 48 }}>
-        <Loader2 size={32} className="animate-spin" style={{ color: "var(--accent, #8b5cf6)" }} />
+        <Loader2 size={32} className="animate-spin" style={{ color: "var(--brand-accent)" }} />
         <p className="text-muted" style={{ marginTop: 12 }}>Loading ACP agents...</p>
       </div>
     );
@@ -236,7 +236,7 @@ export function AcpManager() {
       {/* Header */}
       <div className="glass-panel p-6" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Bot size={24} style={{ color: "var(--accent, #8b5cf6)" }} />
+          <Bot size={24} style={{ color: "var(--brand-accent)" }} />
           <div>
             <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>ACP Agents</h2>
             <p className="text-muted" style={{ margin: 0 }}>
@@ -273,7 +273,7 @@ export function AcpManager() {
               padding: "8px 16px",
               borderRadius: 8,
               border: "none",
-              background: "var(--accent, #8b5cf6)",
+              background: "var(--brand-accent)",
               color: "#fff",
               cursor: "pointer",
               fontSize: 13,
@@ -377,7 +377,7 @@ export function AcpManager() {
               padding: "6px 14px",
               borderRadius: 8,
               border: "1px solid var(--border-subtle, rgba(255,255,255,0.1))",
-              background: filter === f ? "var(--accent, #8b5cf6)" : "var(--bg-glass, rgba(255,255,255,0.05))",
+              background: filter === f ? "var(--brand-accent)" : "var(--bg-glass, rgba(255,255,255,0.05))",
               color: filter === f ? "#fff" : "var(--text-primary, #fff)",
               cursor: "pointer",
               fontSize: 12,
@@ -395,7 +395,7 @@ export function AcpManager() {
         {filtered.map((agent) => {
           const busy = actionLoading[agent.id];
           const isRunning = agent.status !== "stopped" && agent.status !== "disconnected";
-          const providerColor = (agent.config?.color as string) || "var(--accent, #8b5cf6)";
+          const providerColor = (agent.config?.color as string) || "var(--brand-accent)";
 
           return (
             <div
@@ -414,7 +414,7 @@ export function AcpManager() {
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ fontWeight: 600, fontSize: 15 }}>{agent.name}</span>
                     {agent.detected && (
-                      <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "#3b82f622", color: "#3b82f6" }}>
+                      <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "color-mix(in srgb, var(--brand-accent) 13%, transparent)", color: "var(--brand-accent)" }}>
                         PATH
                       </span>
                     )}
@@ -529,7 +529,7 @@ const btnPrimaryStyle: React.CSSProperties = {
   padding: "6px 12px",
   borderRadius: 8,
   border: "none",
-  background: "var(--accent, #8b5cf6)",
+  background: "var(--brand-accent)",
   color: "#fff",
   cursor: "pointer",
   fontSize: 12,

@@ -46,8 +46,8 @@ const CATEGORIES: { id: string | "all"; label: string; icon: string }[] = [
 const PROVIDER_COLORS: Record<string, string> = {
   anthropic: "#d97706",
   openai: "#10b981",
-  google: "#3b82f6",
-  openrouter: "#8b5cf6",
+  google: "var(--brand-accent)",
+  openrouter: "var(--brand-accent)",
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -127,7 +127,7 @@ export function AgentStore() {
   if (loading) {
     return (
       <div className="glass-panel p-6" style={{ textAlign: "center", padding: 48 }}>
-        <Loader2 size={32} className="animate-spin" style={{ color: "var(--accent, #8b5cf6)" }} />
+        <Loader2 size={32} className="animate-spin" style={{ color: "var(--brand-accent)" }} />
         <p className="text-muted" style={{ marginTop: 12 }}>Loading Agent Store...</p>
       </div>
     );
@@ -138,7 +138,7 @@ export function AgentStore() {
       {/* Header */}
       <div className="glass-panel p-6" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Store size={24} style={{ color: "var(--accent, #8b5cf6)" }} />
+          <Store size={24} style={{ color: "var(--brand-accent)" }} />
           <div>
             <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>Agent Store</h2>
             <p className="text-muted" style={{ margin: 0 }}>
@@ -183,9 +183,9 @@ export function AgentStore() {
                 fontSize: 12,
                 cursor: "pointer",
                 border: "1px solid",
-                borderColor: category === cat.id ? "var(--accent, #8b5cf6)" : "var(--border-subtle)",
-                background: category === cat.id ? "rgba(139,92,246,0.12)" : "transparent",
-                color: category === cat.id ? "var(--accent, #8b5cf6)" : "var(--text-muted)",
+                borderColor: category === cat.id ? "var(--brand-accent)" : "var(--border-subtle)",
+                background: category === cat.id ? "color-mix(in srgb, var(--brand-accent) 12%, transparent)" : "transparent",
+                color: category === cat.id ? "var(--brand-accent)" : "var(--text-muted)",
               }}
             >
               {cat.icon} {cat.label}
@@ -197,7 +197,7 @@ export function AgentStore() {
       {/* Agent Grid */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 12 }}>
         {agents.map((agent) => {
-          const providerColor = PROVIDER_COLORS[agent.provider] || "#8b5cf6";
+          const providerColor = PROVIDER_COLORS[agent.provider] || "var(--brand-accent)";
           const isInstalling = installing === agent.id;
           const isUninstalling = uninstalling === agent.id;
 
@@ -224,7 +224,7 @@ export function AgentStore() {
                         <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: `${providerColor}22`, color: providerColor, fontWeight: 600 }}>
                           {agent.provider}
                         </span>
-                        <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "rgba(139,92,246,0.08)", color: "var(--text-muted)" }}>
+                        <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "color-mix(in srgb, var(--brand-accent) 8%, transparent)", color: "var(--text-muted)" }}>
                           {agent.model}
                         </span>
                       </div>
@@ -244,7 +244,7 @@ export function AgentStore() {
                 {agent.skills && agent.skills.length > 0 && (
                   <div style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap" }}>
                     {agent.skills.slice(0, 3).map((skill) => (
-                      <span key={skill} style={{ padding: "2px 7px", background: "rgba(59,130,246,0.08)", borderRadius: "var(--radius-full)", fontSize: 10, color: "#3b82f6", fontWeight: 500 }}>
+                      <span key={skill} style={{ padding: "2px 7px", background: "color-mix(in srgb, var(--brand-accent) 8%, transparent)", borderRadius: "var(--radius-full)", fontSize: 10, color: "var(--brand-accent)", fontWeight: 500 }}>
                         {skill}
                       </span>
                     ))}
@@ -255,7 +255,7 @@ export function AgentStore() {
                 {agent.tags && agent.tags.length > 0 && (
                   <div style={{ display: "flex", gap: 3, marginTop: 4, flexWrap: "wrap" }}>
                     {agent.tags.slice(0, 4).map((tag) => (
-                      <span key={tag} style={{ padding: "1px 6px", background: "rgba(139,92,246,0.06)", borderRadius: "var(--radius-full)", fontSize: 9, color: "var(--text-muted)" }}>
+                      <span key={tag} style={{ padding: "1px 6px", background: "color-mix(in srgb, var(--brand-accent) 6%, transparent)", borderRadius: "var(--radius-full)", fontSize: 9, color: "var(--text-muted)" }}>
                         {tag}
                       </span>
                     ))}
@@ -294,7 +294,7 @@ export function AgentStore() {
                     disabled={isInstalling}
                     style={{
                       display: "flex", alignItems: "center", gap: 4, padding: "6px 14px",
-                      borderRadius: 8, border: "none", background: "var(--accent, #8b5cf6)",
+                      borderRadius: 8, border: "none", background: "var(--brand-accent)",
                       color: "#fff", cursor: isInstalling ? "wait" : "pointer", fontSize: 12, fontWeight: 600,
                       opacity: isInstalling ? 0.7 : 1,
                     }}

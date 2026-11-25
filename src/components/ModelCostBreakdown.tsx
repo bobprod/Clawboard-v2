@@ -41,13 +41,13 @@ const MOCK_TRACES: TraceSpan[] = [
 ];
 
 const MODEL_COLORS: Record<string, string> = {
-  claude:    '#8b5cf6',
+  claude:    'var(--brand-accent)',
   nemotron:  '#76b900',
   llama:     '#0064c8',
   deepseek:  '#1a73e8',
   gemini:    '#4285f4',
-  kimi:      '#3b82f6',
-  qwq:       '#9333ea',
+  kimi:      'var(--brand-accent)',
+  qwq:       'var(--brand-accent)',
   local:     '#10b981',
 };
 
@@ -157,9 +157,9 @@ function TracesPanel() {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <span style={{ fontWeight: 700, fontSize: 12, color: 'var(--text-primary)', fontFamily: 'var(--mono)' }}>{span.name}</span>
-                  {span.agent && <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 5, background: 'rgba(139,92,246,0.12)', color: 'var(--brand-accent)', fontWeight: 700 }}>{span.agent}</span>}
+                  {span.agent && <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 5, background: 'color-mix(in srgb, var(--brand-accent) 12%, transparent)', color: 'var(--brand-accent)', fontWeight: 700 }}>{span.agent}</span>}
                   {span.model && (
-                    <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 5, background: `${modelColor(span.model)}20`, color: modelColor(span.model), fontWeight: 600 }}>
+                    <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 5, background: `color-mix(in srgb, ${modelColor(span.model)} 20%, transparent)`, color: modelColor(span.model), fontWeight: 600 }}>
                       {modelLabel(span.model)}
                     </span>
                   )}
@@ -225,7 +225,7 @@ export function ModelCostBreakdown() {
           <button onClick={() => setTab('costs')} style={{ padding: '4px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', background: tab === 'costs' ? 'rgba(16,185,129,0.15)' : 'transparent', color: tab === 'costs' ? '#10b981' : 'var(--text-muted)', fontWeight: 600, fontSize: '11px', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 5 }}>
             <DollarSign size={11} /> Coûts
           </button>
-          <button onClick={() => setTab('traces')} style={{ padding: '4px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', background: tab === 'traces' ? 'rgba(139,92,246,0.15)' : 'transparent', color: tab === 'traces' ? 'var(--brand-accent)' : 'var(--text-muted)', fontWeight: 600, fontSize: '11px', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 5 }}>
+          <button onClick={() => setTab('traces')} style={{ padding: '4px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', background: tab === 'traces' ? 'color-mix(in srgb, var(--brand-accent) 15%, transparent)' : 'transparent', color: tab === 'traces' ? 'var(--brand-accent)' : 'var(--text-muted)', fontWeight: 600, fontSize: '11px', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 5 }}>
             <Activity size={11} /> Traces OTel
           </button>
         </div>
@@ -287,7 +287,7 @@ export function ModelCostBreakdown() {
                     <div style={{
                       height: '100%', borderRadius: 3,
                       width: `${pct}%`,
-                      background: `linear-gradient(90deg, ${color}aa, ${color})`,
+                      background: 'var(--brand-accent)',
                       transition: 'width 0.5s ease',
                     }} />
                   </div>

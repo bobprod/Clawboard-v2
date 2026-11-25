@@ -350,7 +350,7 @@ export const BrowserControl = () => {
                 gap: "6px",
                 padding: "7px 16px",
                 borderRadius: "var(--radius-full)",
-                background: "rgba(139,92,246,0.3)",
+                background: "color-mix(in srgb, var(--brand-accent) 30%, transparent)",
                 color: "#fff",
                 border: "none",
                 fontSize: "12px",

@@ -77,8 +77,8 @@ type DrawerState =
 
 const transportBadge: Record<McpTransport, { label: string; color: string }> = {
   stdio: { label: "stdio", color: "#10b981" },
-  sse: { label: "SSE", color: "#3b82f6" },
-  "streamable-http": { label: "HTTP", color: "#8b5cf6" },
+  sse: { label: "SSE", color: "var(--brand-accent)" },
+  "streamable-http": { label: "HTTP", color: "var(--brand-accent)" },
 };
 
 const statusConfig: Record<
@@ -120,9 +120,9 @@ const btn: React.CSSProperties = {
   gap: 6,
   padding: "10px 18px",
   borderRadius: "var(--radius-full)",
-  background: "rgba(59,130,246,0.15)",
-  border: "1px solid rgba(59,130,246,0.3)",
-  color: "#3b82f6",
+  background: "color-mix(in srgb, var(--brand-accent) 15%, transparent)",
+  border: "1px solid color-mix(in srgb, var(--brand-accent) 30%, transparent)",
+  color: "var(--brand-accent)",
   cursor: "pointer",
   fontWeight: 700,
   fontSize: "0.85rem",
@@ -583,8 +583,8 @@ export function McpModule({ embedded = false }: { embedded?: boolean } = {}) {
           onClick={openCustom}
           style={{
             ...btn,
-            background: "rgba(139,92,246,0.15)",
-            borderColor: "rgba(139,92,246,0.3)",
+            background: "color-mix(in srgb, var(--brand-accent) 15%, transparent)",
+            borderColor: "color-mix(in srgb, var(--brand-accent) 30%, transparent)",
             color: "var(--brand-accent)",
           }}
         >
@@ -704,7 +704,7 @@ export function McpModule({ embedded = false }: { embedded?: boolean } = {}) {
                       ? "var(--brand-accent)"
                       : "var(--border-subtle)",
                   background:
-                    catFilter === c.id ? "rgba(139,92,246,0.12)" : "transparent",
+                    catFilter === c.id ? "color-mix(in srgb, var(--brand-accent) 12%, transparent)" : "transparent",
                   color:
                     catFilter === c.id
                       ? "var(--brand-accent)"
@@ -792,7 +792,7 @@ export function McpModule({ embedded = false }: { embedded?: boolean } = {}) {
                           fontWeight: 700,
                           padding: "2px 7px",
                           borderRadius: 4,
-                          background: `${tb.color}15`,
+                          background: `color-mix(in srgb, ${tb.color} 8%, transparent)`,
                           color: tb.color,
                           fontFamily: "var(--mono)",
                         }}
@@ -890,7 +890,7 @@ export function McpModule({ embedded = false }: { embedded?: boolean } = {}) {
                         width: 44,
                         height: 44,
                         borderRadius: 12,
-                        background: `${cat?.color || "#8b5cf6"}15`,
+                        background: `color-mix(in srgb, ${cat?.color || "var(--brand-accent)"} 8%, transparent)`,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -917,7 +917,7 @@ export function McpModule({ embedded = false }: { embedded?: boolean } = {}) {
                             fontWeight: 700,
                             padding: "2px 7px",
                             borderRadius: 4,
-                            background: `${tb.color}15`,
+                            background: `color-mix(in srgb, ${tb.color} 8%, transparent)`,
                             color: tb.color,
                             fontFamily: "var(--mono)",
                           }}
@@ -1445,7 +1445,7 @@ export function McpModule({ embedded = false }: { embedded?: boolean } = {}) {
       <div>
         <DrawerHeader
           icon={cat?.icon || "🔌"}
-          color={cat?.color || "#8b5cf6"}
+          color={cat?.color || "var(--brand-accent)"}
           title={s.name}
         >
           {s.description || cat?.description || ""}
@@ -1612,7 +1612,7 @@ export function McpModule({ embedded = false }: { embedded?: boolean } = {}) {
   function renderCustomDrawer() {
     return (
       <div>
-        <DrawerHeader icon="🔌" color="#8b5cf6" title="Serveur personnalisé">
+        <DrawerHeader icon="🔌" color="var(--brand-accent)" title="Serveur personnalisé">
           Connecte n'importe quel serveur MCP (stdio, SSE ou HTTP) ou importe une
           config <code>mcpServers</code>.
         </DrawerHeader>
@@ -1702,11 +1702,11 @@ export function McpModule({ embedded = false }: { embedded?: boolean } = {}) {
                         fontSize: "0.8rem",
                         background:
                           customForm.transport === t
-                            ? `${transportBadge[t].color}15`
+                            ? `color-mix(in srgb, ${transportBadge[t].color} 8%, transparent)`
                             : "transparent",
                         borderColor:
                           customForm.transport === t
-                            ? `${transportBadge[t].color}44`
+                            ? `color-mix(in srgb, ${transportBadge[t].color} 27%, transparent)`
                             : "var(--border-subtle)",
                         color:
                           customForm.transport === t
@@ -1855,7 +1855,7 @@ function Badge({
         fontWeight: 700,
         padding: "3px 10px",
         borderRadius: 999,
-        background: `${color}15`,
+        background: `color-mix(in srgb, ${color} 8%, transparent)`,
         color,
         fontFamily: "var(--mono)",
       }}
@@ -1884,7 +1884,7 @@ function DrawerHeader({
             width: 48,
             height: 48,
             borderRadius: 14,
-            background: `${color}15`,
+            background: `color-mix(in srgb, ${color} 8%, transparent)`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",

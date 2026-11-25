@@ -71,7 +71,7 @@ export const DevToolsPage = () => {
               color: activeTab === tab.id ? "#fff" : "var(--text-secondary)",
               boxShadow:
                 activeTab === tab.id
-                  ? "0 2px 8px rgba(139,92,246,0.3)"
+                  ? "0 2px 8px color-mix(in srgb, var(--brand-accent) 30%, transparent)"
                   : "none",
             }}
           >

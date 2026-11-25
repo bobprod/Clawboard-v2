@@ -10,7 +10,7 @@ export const resetTasksTour = () => localStorage.removeItem(TASKS_TOUR_KEY);
 
 const TOUR_STYLES = {
   options: {
-    primaryColor: '#3b82f6',
+    primaryColor: 'var(--brand-accent)',
     backgroundColor: '#1a1625',
     textColor: '#e2e8f0',
     arrowColor: '#1a1625',
@@ -20,7 +20,7 @@ const TOUR_STYLES = {
   },
   tooltip: {
     borderRadius: 14,
-    boxShadow: '0 8px 40px rgba(0,0,0,0.55), 0 0 0 1px rgba(59,130,246,0.25)',
+    boxShadow: '0 8px 40px rgba(0,0,0,0.55), 0 0 0 1px color-mix(in srgb, var(--brand-accent) 25%, transparent)',
     padding: '22px 26px 18px',
   },
   tooltipTitle: {
@@ -41,12 +41,12 @@ const TOUR_STYLES = {
     borderTop: '1px solid rgba(255,255,255,0.08)',
   },
   buttonNext: {
-    background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
+    background: 'var(--brand-accent)',
     borderRadius: 9,
     fontSize: '0.875rem',
     fontWeight: 600,
     padding: '9px 20px',
-    boxShadow: '0 4px 12px rgba(59,130,246,0.35)',
+    boxShadow: 'none',
   },
   buttonBack: {
     color: '#94a3b8',
@@ -76,13 +76,13 @@ const LOCALE = {
 
 // ─── Tag helper (inline) ──────────────────────────────────────────────────────
 
-const Tag = ({ label, color = '#3b82f6' }: { label: string; color?: string }) => (
+const Tag = ({ label, color = 'var(--brand-accent)' }: { label: string; color?: string }) => (
   <span style={{
     display: 'inline-block',
     fontSize: '11px', fontFamily: 'monospace', fontWeight: 700,
     padding: '2px 8px', borderRadius: 5,
-    background: `${color}22`, color, margin: '0 2px',
-    border: `1px solid ${color}33`,
+    background: `color-mix(in srgb, ${color} 13%, transparent)`, color, margin: '0 2px',
+    border: `1px solid color-mix(in srgb, ${color} 20%, transparent)`,
   }}>{label}</span>
 );
 
@@ -173,11 +173,11 @@ const STEPS: Step[] = [
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: '0.85rem' }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-            <span style={{ color: '#3b82f6', fontWeight: 700, flexShrink: 0 }}>▶ Tâches</span>
+            <span style={{ color: 'var(--brand-accent)', fontWeight: 700, flexShrink: 0 }}>▶ Tâches</span>
             <span style={{ opacity: 0.85 }}>Liste live de toutes les exécutions, filtres par statut, vues liste et Kanban</span>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-            <span style={{ color: '#8b5cf6', fontWeight: 700, flexShrink: 0 }}>📄 Modèles</span>
+            <span style={{ color: 'var(--brand-accent)', fontWeight: 700, flexShrink: 0 }}>📄 Modèles</span>
             <span style={{ opacity: 0.85 }}>Templates préconfigurés, réutilisables en 1 clic</span>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
@@ -211,7 +211,7 @@ const STEPS: Step[] = [
           La liste réagit à chaque frappe, sans délai.
         </p>
         <p style={{ margin: 0, opacity: 0.7, fontSize: '0.8rem' }}>
-          Exemple : tape <Tag label="veille" color="#3b82f6" /> pour voir uniquement
+          Exemple : tape <Tag label="veille" color="var(--brand-accent)" /> pour voir uniquement
           les tâches liées à un skill de veille.
         </p>
       </div>
@@ -318,7 +318,7 @@ const STEPS: Step[] = [
         </ul>
         <p style={{ margin: 0, opacity: 0.7, fontSize: '0.8rem' }}>
           💡 Crée un modèle depuis le formulaire de création de tâche, ou directement
-          depuis le bouton <Tag label="+ Créer un modèle" color="#8b5cf6" /> dans cet onglet.
+          depuis le bouton <Tag label="+ Créer un modèle" color="var(--brand-accent)" /> dans cet onglet.
         </p>
       </div>
     ),
@@ -425,11 +425,11 @@ const STEPS: Step[] = [
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: '0.875rem' }}>
           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-            <span style={{ background: 'rgba(59,130,246,0.2)', color: '#3b82f6', borderRadius: 6, padding: '2px 8px', fontWeight: 700, flexShrink: 0, fontSize: '12px' }}>1</span>
+            <span style={{ background: 'color-mix(in srgb, var(--brand-accent) 20%, transparent)', color: 'var(--brand-accent)', borderRadius: 6, padding: '2px 8px', fontWeight: 700, flexShrink: 0, fontSize: '12px' }}>1</span>
             <span><strong>Crée</strong> une tâche avec le formulaire → teste-la une première fois</span>
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-            <span style={{ background: 'rgba(139,92,246,0.2)', color: '#8b5cf6', borderRadius: 6, padding: '2px 8px', fontWeight: 700, flexShrink: 0, fontSize: '12px' }}>2</span>
+            <span style={{ background: 'color-mix(in srgb, var(--brand-accent) 20%, transparent)', color: 'var(--brand-accent)', borderRadius: 6, padding: '2px 8px', fontWeight: 700, flexShrink: 0, fontSize: '12px' }}>2</span>
             <span><strong>Sauvegarde</strong> en modèle réutilisable depuis la page de création</span>
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>

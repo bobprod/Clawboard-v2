@@ -16,14 +16,14 @@ const MARKDOWN_STYLES = `
   .md-body h3 { font-size: 0.95em; color: var(--brand-accent); }
   .md-body blockquote { border-left: 3px solid var(--brand-accent); margin: 6px 0; padding: 2px 12px; color: var(--text-secondary); font-style: italic; }
   .md-body table { border-collapse: collapse; margin: 8px 0; width: 100%; font-size: 0.85em; }
-  .md-body th { background: rgba(139,92,246,0.15); padding: 6px 10px; border: 1px solid var(--border-subtle); font-weight: 600; }
+  .md-body th { background: color-mix(in srgb, var(--brand-accent) 15%, transparent); padding: 6px 10px; border: 1px solid var(--border-subtle); font-weight: 600; }
   .md-body td { padding: 5px 10px; border: 1px solid var(--border-subtle); }
   .md-body tr:nth-child(even) { background: rgba(255,255,255,0.03); }
   .md-body a { color: var(--brand-accent); text-decoration: underline; }
   .md-body hr { border: none; border-top: 1px solid var(--border-subtle); margin: 10px 0; }
   .md-body strong { font-weight: 700; }
   .md-body em { font-style: italic; opacity: 0.9; }
-  .md-body code.inline-code { background: rgba(139,92,246,0.15); padding: 1px 6px; border-radius: 4px; font-family: monospace; font-size: 0.85em; color: var(--brand-accent); }
+  .md-body code.inline-code { background: color-mix(in srgb, var(--brand-accent) 15%, transparent); padding: 1px 6px; border-radius: 4px; font-family: monospace; font-size: 0.85em; color: var(--brand-accent); }
   .md-body pre { background: rgba(0,0,0,0.3); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 12px; margin: 8px 0; overflow-x: auto; }
 `;
 

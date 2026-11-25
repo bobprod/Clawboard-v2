@@ -216,7 +216,7 @@ const STATUS_COLOR: Record<string, string> = {
   added: "#10b981",
   modified: "#f59e0b",
   deleted: "#ef4444",
-  renamed: "#3b82f6",
+  renamed: "var(--brand-accent)",
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -355,14 +355,14 @@ function InlineDiffViewer({
                   : isDel
                     ? "rgba(239,68,68,0.08)"
                     : isHunk
-                      ? "rgba(59,130,246,0.06)"
+                      ? "color-mix(in srgb, var(--brand-accent) 6%, transparent)"
                       : "transparent";
                 const color = isAdd
                   ? "#10b981"
                   : isDel
                     ? "#ef4444"
                     : isHunk
-                      ? "#3b82f6"
+                      ? "var(--brand-accent)"
                       : isHeader
                         ? "var(--text-muted)"
                         : "var(--text-secondary)";
@@ -927,7 +927,7 @@ export const GitLogModule = () => {
                                 background:
                                   diffView?.hash === commit.hash &&
                                   diffView?.file === f.path
-                                    ? "rgba(139,92,246,0.15)"
+                                    ? "color-mix(in srgb, var(--brand-accent) 15%, transparent)"
                                     : "rgba(255,255,255,0.04)",
                                 border: "1px solid var(--border-subtle)",
                                 color:
@@ -1032,7 +1032,7 @@ export const GitLogModule = () => {
                             fontWeight: 600,
                             background:
                               diffView?.hash === commit.hash && !diffView?.file
-                                ? "rgba(139,92,246,0.15)"
+                                ? "color-mix(in srgb, var(--brand-accent) 15%, transparent)"
                                 : "rgba(255,255,255,0.04)",
                             border: "1px solid var(--border-subtle)",
                             color:

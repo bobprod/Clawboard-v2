@@ -31,8 +31,8 @@ const MOCK_PRESENCE: PresenceEntry[] = [
 // ── Mode config ───────────────────────────────────────────────────────────────
 
 const MODE_CFG: Record<ClientMode, { label: string; icon: React.FC<{ size?: number }>; color: string }> = {
-  ui:      { label: 'UI',      icon: Monitor,    color: '#8b5cf6' },
-  webchat: { label: 'WebChat', icon: Globe,      color: '#3b82f6' },
+  ui:      { label: 'UI',      icon: Monitor,    color: 'var(--brand-accent)' },
+  webchat: { label: 'WebChat', icon: Globe,      color: 'var(--brand-accent)' },
   cli:     { label: 'CLI',     icon: Terminal,   color: '#10b981' },
   backend: { label: 'Gateway', icon: Cpu,        color: '#f59e0b' },
   probe:   { label: 'Probe',   icon: Radio,      color: '#94a3b8' },

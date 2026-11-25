@@ -69,17 +69,17 @@ export function PWAUpdateToast() {
             alignItems: "center",
             gap: 12,
             background: "var(--bg-surface, #1a1a2e)",
-            border: "1px solid var(--brand-accent, #8b5cf6)",
+            border: "1px solid var(--brand-accent)",
             borderRadius: 14,
             padding: "12px 16px",
-            boxShadow: "0 8px 32px rgba(139,92,246,0.25)",
+            boxShadow: "0 8px 32px color-mix(in srgb, var(--brand-accent) 25%, transparent)",
             color: "var(--text-primary, #fff)",
             fontSize: "0.875rem",
             maxWidth: 380,
             animation: "slideUp 0.3s ease",
           }}
         >
-          <RefreshCw size={16} style={{ color: "var(--brand-accent, #8b5cf6)", flexShrink: 0 }} />
+          <RefreshCw size={16} style={{ color: "var(--brand-accent)", flexShrink: 0 }} />
           <span style={{ flex: 1 }}>
             <strong>Mise à jour disponible</strong> — nouvelle version de ClawBoard prête.
           </span>
@@ -89,7 +89,7 @@ export function PWAUpdateToast() {
               padding: "6px 14px",
               borderRadius: 8,
               border: "none",
-              background: "var(--brand-accent, #8b5cf6)",
+              background: "var(--brand-accent)",
               color: "#fff",
               fontWeight: 700,
               fontSize: "12px",
@@ -124,7 +124,7 @@ export function PWAUpdateToast() {
             alignItems: "center",
             gap: 12,
             background: "var(--bg-surface, #1a1a2e)",
-            border: "1px solid rgba(139,92,246,0.4)",
+            border: "1px solid color-mix(in srgb, var(--brand-accent) 40%, transparent)",
             borderRadius: 14,
             padding: "12px 16px",
             boxShadow: "0 8px 32px rgba(0,0,0,0.4)",

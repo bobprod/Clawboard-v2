@@ -246,7 +246,7 @@ const AgentNode = ({ data }: { data: AgentNodeData }) => {
                   fontSize: "10px",
                   padding: "1px 6px",
                   borderRadius: 4,
-                  background: "rgba(139,92,246,0.1)",
+                  background: "color-mix(in srgb, var(--brand-accent) 10%, transparent)",
                   color: "var(--brand-accent)",
                   fontWeight: 700,
                 }}
@@ -274,8 +274,8 @@ const AgentNode = ({ data }: { data: AgentNodeData }) => {
                   fontSize: "10px",
                   padding: "1px 6px",
                   borderRadius: 4,
-                  background: "rgba(59,130,246,0.1)",
-                  color: "#3b82f6",
+                  background: "color-mix(in srgb, var(--brand-accent) 10%, transparent)",
+                  color: "var(--brand-accent)",
                   fontWeight: 700,
                 }}
               >
@@ -1555,8 +1555,8 @@ export const AgentsHierarchyModule = () => {
             padding: "20px 24px",
             borderRadius: 14,
             background:
-              "linear-gradient(135deg, rgba(59,130,246,0.06), rgba(118,185,0,0.04))",
-            border: "1px solid rgba(59,130,246,0.2)",
+              "linear-gradient(135deg, color-mix(in srgb, var(--brand-accent) 6%, transparent), rgba(118,185,0,0.04))",
+            border: "1px solid color-mix(in srgb, var(--brand-accent) 20%, transparent)",
             display: "flex",
             flexDirection: "column",
             gap: 14,
@@ -2037,10 +2037,10 @@ const EditAgentModal = ({
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div
               style={{
-                background: "rgba(59,130,246,0.15)",
+                background: "color-mix(in srgb, var(--brand-accent) 15%, transparent)",
                 borderRadius: 10,
                 padding: 9,
-                color: "#3b82f6",
+                color: "var(--brand-accent)",
               }}
             >
               <Settings2 size={20} />
@@ -2162,10 +2162,10 @@ const EditAgentModal = ({
                     fontSize: "11px",
                     fontWeight: 600,
                     background: active
-                      ? "rgba(59,130,246,0.12)"
+                      ? "color-mix(in srgb, var(--brand-accent) 12%, transparent)"
                       : "var(--bg-glass)",
-                    border: `1px solid ${active ? "rgba(59,130,246,0.35)" : "var(--border-subtle)"}`,
-                    color: active ? "#3b82f6" : "var(--text-muted)",
+                    border: `1px solid ${active ? "color-mix(in srgb, var(--brand-accent) 35%, transparent)" : "var(--border-subtle)"}`,
+                    color: active ? "var(--brand-accent)" : "var(--text-muted)",
                     cursor: "pointer",
                   }}
                 >
@@ -2208,7 +2208,7 @@ const EditAgentModal = ({
               padding: "9px 22px",
               borderRadius: 8,
               border: "none",
-              background: saving ? "rgba(59,130,246,0.4)" : "#3b82f6",
+              background: saving ? "color-mix(in srgb, var(--brand-accent) 40%, transparent)" : "var(--brand-accent)",
               color: "#fff",
               cursor: saving ? "not-allowed" : "pointer",
               fontWeight: 700,

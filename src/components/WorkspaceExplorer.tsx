@@ -339,7 +339,7 @@ const TreeNode = ({
           fontSize: "13px",
         }}
         onMouseEnter={(e) =>
-          (e.currentTarget.style.background = "rgba(139,92,246,0.08)")
+          (e.currentTarget.style.background = "color-mix(in srgb, var(--brand-accent) 8%, transparent)")
         }
         onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
       >
@@ -474,7 +474,7 @@ const UploadPanel = ({ onUploaded }: { onUploaded: () => void }) => {
               border: `1px solid ${target.scope === t.scope ? "var(--brand-primary)" : "var(--border-subtle)"}`,
               background:
                 target.scope === t.scope
-                  ? "rgba(139,92,246,0.12)"
+                  ? "color-mix(in srgb, var(--brand-accent) 12%, transparent)"
                   : "transparent",
               color:
                 target.scope === t.scope
@@ -518,7 +518,7 @@ const UploadPanel = ({ onUploaded }: { onUploaded: () => void }) => {
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.borderColor = "var(--brand-primary)";
-          e.currentTarget.style.background = "rgba(139,92,246,0.04)";
+          e.currentTarget.style.background = "color-mix(in srgb, var(--brand-accent) 4%, transparent)";
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.borderColor = "var(--border-subtle)";

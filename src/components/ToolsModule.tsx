@@ -80,7 +80,7 @@ const SEC_STYLE: Record<
     icon: ShieldAlert,
   },
   elevated: { color: "#f97316", bg: "rgba(249,115,22,0.1)", icon: ShieldAlert },
-  network: { color: "#3b82f6", bg: "rgba(59,130,246,0.1)", icon: Globe },
+  network: { color: "var(--brand-accent)", bg: "color-mix(in srgb, var(--brand-accent) 10%, transparent)", icon: Globe },
 };
 
 const GROUP_ICONS: Record<string, typeof Wrench> = {
@@ -299,7 +299,7 @@ export const ToolsModule = () => {
           <button
             onClick={fetchAll}
             title="Rafraîchir"
-            style={btnStyle("#3b82f6")}
+            style={btnStyle("var(--brand-accent)")}
           >
             <RefreshCw size={14} /> Rafraîchir
           </button>
@@ -355,7 +355,7 @@ export const ToolsModule = () => {
                   borderRadius: 12,
                   border: `1px solid ${isActive ? "var(--brand-accent)" : "var(--border-subtle)"}`,
                   background: isActive
-                    ? "rgba(139,92,246,0.1)"
+                    ? "color-mix(in srgb, var(--brand-accent) 10%, transparent)"
                     : "var(--bg-surface)",
                   cursor: "pointer",
                   textAlign: "left",
@@ -434,7 +434,7 @@ export const ToolsModule = () => {
                     width: "100%",
                     padding: "12px 16px",
                     background: isExpanded
-                      ? "rgba(139,92,246,0.05)"
+                      ? "color-mix(in srgb, var(--brand-accent) 5%, transparent)"
                       : "var(--bg-surface)",
                     border: "none",
                     cursor: "pointer",
@@ -457,7 +457,7 @@ export const ToolsModule = () => {
                       fontSize: "0.75rem",
                       color: "var(--text-muted)",
                       padding: "2px 8px",
-                      background: "rgba(139,92,246,0.08)",
+                      background: "color-mix(in srgb, var(--brand-accent) 8%, transparent)",
                       borderRadius: 20,
                     }}
                   >
@@ -561,8 +561,8 @@ export const ToolsModule = () => {
                               borderRadius: 20,
                               background:
                                 tool.category === "openclaw"
-                                  ? "rgba(59,130,246,0.08)"
-                                  : "rgba(139,92,246,0.08)",
+                                  ? "color-mix(in srgb, var(--brand-accent) 8%, transparent)"
+                                  : "color-mix(in srgb, var(--brand-accent) 8%, transparent)",
                             }}
                           >
                             {tool.category}
@@ -683,8 +683,8 @@ export const ToolsModule = () => {
                         fontSize: "0.65rem",
                         padding: "1px 6px",
                         borderRadius: 8,
-                        background: "rgba(59,130,246,0.1)",
-                        color: "#3b82f6",
+                        background: "color-mix(in srgb, var(--brand-accent) 10%, transparent)",
+                        color: "var(--brand-accent)",
                         fontWeight: 600,
                       }}
                     >
@@ -779,8 +779,8 @@ function btnStyle(color: string): React.CSSProperties {
     gap: 6,
     padding: "8px 16px",
     borderRadius: 10,
-    background: `${color}15`,
-    border: `1px solid ${color}30`,
+    background: `color-mix(in srgb, ${color} 8%, transparent)`,
+    border: `1px solid color-mix(in srgb, ${color} 19%, transparent)`,
     color,
     cursor: "pointer",
     fontWeight: 600,

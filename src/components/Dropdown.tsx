@@ -39,7 +39,7 @@ export const Dropdown = ({ trigger, items }: { trigger: React.ReactNode, items: 
           background: 'var(--bg-surface-elevated)',
           border: '1px solid rgba(255,255,255,0.1)',
           borderRadius: '12px',
-          boxShadow: '0 10px 40px rgba(0,0,0,0.6), 0 0 15px rgba(139, 92, 246, 0.15)',
+          boxShadow: '0 10px 40px rgba(0,0,0,0.6), 0 0 15px color-mix(in srgb, var(--brand-accent) 15%, transparent)',
           animation: 'pageFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
           display: 'flex', flexDirection: 'column', gap: '2px'
         }}>

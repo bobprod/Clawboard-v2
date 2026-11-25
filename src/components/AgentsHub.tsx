@@ -191,14 +191,11 @@ export const AgentsHub = () => {
                 fontWeight: isActive ? 700 : 500,
                 transition: "all 0.2s",
                 background: isActive
-                  ? "rgba(139,92,246,0.18)"
+                  ? "color-mix(in srgb, var(--brand-accent) 18%, transparent)"
                   : "transparent",
                 color: isActive
                   ? "var(--brand-accent)"
                   : "var(--text-secondary)",
-                boxShadow: isActive
-                  ? "0 2px 8px rgba(139,92,246,0.15)"
-                  : "none",
               }}
             >
               <tab.icon size={14} style={{ opacity: isActive ? 1 : 0.65 }} />
@@ -253,14 +250,11 @@ export const AgentsHub = () => {
                   fontWeight: isActive ? 700 : 500,
                   transition: "all 0.2s",
                   background: isActive
-                    ? "rgba(139,92,246,0.18)"
+                    ? "color-mix(in srgb, var(--brand-accent) 18%, transparent)"
                     : "transparent",
                   color: isActive
                     ? "var(--brand-accent)"
                     : "var(--text-secondary)",
-                  boxShadow: isActive
-                    ? "0 2px 8px rgba(139,92,246,0.15)"
-                    : "none",
                 }}
               >
                 <v.icon size={13} style={{ opacity: isActive ? 1 : 0.65 }} />

@@ -205,7 +205,7 @@ export const TourGuide = ({ run: runProp, onFinish }: TourGuideProps) => {
       }}
       styles={{
         options: {
-          primaryColor: 'var(--brand-accent, #8b5cf6)',
+          primaryColor: 'var(--brand-accent)',
           backgroundColor: '#1e1b2e',
           textColor: '#e2e8f0',
           arrowColor: '#1e1b2e',
@@ -215,7 +215,7 @@ export const TourGuide = ({ run: runProp, onFinish }: TourGuideProps) => {
         },
         tooltip: {
           borderRadius: 12,
-          boxShadow: '0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(139,92,246,0.2)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px color-mix(in srgb, var(--brand-accent) 20%, transparent)',
           padding: '20px 24px 16px',
         },
         tooltipTitle: {
@@ -236,7 +236,7 @@ export const TourGuide = ({ run: runProp, onFinish }: TourGuideProps) => {
           borderTop: '1px solid rgba(255,255,255,0.08)',
         },
         buttonNext: {
-          background: '#8b5cf6',
+          background: 'var(--brand-accent)',
           borderRadius: 8,
           fontSize: '0.875rem',
           fontWeight: 600,

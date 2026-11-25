@@ -58,7 +58,7 @@ const TYPE_META: Record<
   string,
   { icon: typeof Zap; color: string; label: string; route?: string }
 > = {
-  task: { icon: FileText, color: "#3b82f6", label: "Tâche", route: "/tasks" },
+  task: { icon: FileText, color: "var(--brand-accent)", label: "Tâche", route: "/tasks" },
   modele: { icon: Cpu, color: "#a855f7", label: "Modèle", route: "/tasks" },
   cron: {
     icon: Repeat2,
@@ -147,8 +147,8 @@ export function LiaPlanPreview({ plan, onExecuted }: Props) {
     <div
       style={{
         background:
-          "linear-gradient(135deg, rgba(139,92,246,0.05), rgba(59,130,246,0.03))",
-        border: "1px solid rgba(139,92,246,0.18)",
+          "linear-gradient(135deg, color-mix(in srgb, var(--brand-accent) 5%, transparent), color-mix(in srgb, var(--brand-accent) 3%, transparent))",
+        border: "1px solid color-mix(in srgb, var(--brand-accent) 18%, transparent)",
         borderRadius: 14,
         overflow: "hidden",
         marginTop: 8,
@@ -159,20 +159,20 @@ export function LiaPlanPreview({ plan, onExecuted }: Props) {
       <div
         style={{
           padding: "10px 14px 8px",
-          borderBottom: "1px solid rgba(139,92,246,0.1)",
-          background: "rgba(139,92,246,0.07)",
+          borderBottom: "1px solid color-mix(in srgb, var(--brand-accent) 10%, transparent)",
+          background: "color-mix(in srgb, var(--brand-accent) 7%, transparent)",
           display: "flex",
           alignItems: "center",
           gap: 8,
           flexWrap: "wrap",
         }}
       >
-        <Zap size={13} color="#8b5cf6" />
+        <Zap size={13} color="var(--brand-accent)" />
         <span
           style={{
             fontWeight: 700,
             fontSize: "0.75rem",
-            color: "#8b5cf6",
+            color: "var(--brand-accent)",
             letterSpacing: "0.4px",
           }}
         >
@@ -197,9 +197,9 @@ export function LiaPlanPreview({ plan, onExecuted }: Props) {
                   fontSize: "0.68rem",
                   padding: "1px 7px",
                   borderRadius: 99,
-                  background: `${meta.color}15`,
+                  background: `color-mix(in srgb, ${meta.color} 8%, transparent)`,
                   color: meta.color,
-                  border: `1px solid ${meta.color}30`,
+                  border: `1px solid color-mix(in srgb, ${meta.color} 19%, transparent)`,
                   display: "flex",
                   alignItems: "center",
                   gap: 3,
@@ -267,7 +267,7 @@ export function LiaPlanPreview({ plan, onExecuted }: Props) {
                     : st === "error"
                       ? "rgba(239,68,68,0.05)"
                       : st === "running"
-                        ? "rgba(139,92,246,0.06)"
+                        ? "color-mix(in srgb, var(--brand-accent) 6%, transparent)"
                         : "rgba(255,255,255,0.02)",
                 border: `1px solid ${
                   st === "done"
@@ -275,7 +275,7 @@ export function LiaPlanPreview({ plan, onExecuted }: Props) {
                     : st === "error"
                       ? "rgba(239,68,68,0.18)"
                       : st === "running"
-                        ? "rgba(139,92,246,0.25)"
+                        ? "color-mix(in srgb, var(--brand-accent) 25%, transparent)"
                         : "var(--border-subtle)"
                 }`,
                 transition: "all 0.3s",
@@ -307,14 +307,14 @@ export function LiaPlanPreview({ plan, onExecuted }: Props) {
                       st === "done"
                         ? "rgba(16,185,129,0.12)"
                         : st === "running"
-                          ? "rgba(139,92,246,0.15)"
-                          : `${meta.color}15`,
+                          ? "color-mix(in srgb, var(--brand-accent) 15%, transparent)"
+                          : `color-mix(in srgb, ${meta.color} 8%, transparent)`,
                     border: `1px solid ${
                       st === "done"
                         ? "rgba(16,185,129,0.3)"
                         : st === "running"
-                          ? "rgba(139,92,246,0.35)"
-                          : `${meta.color}30`
+                          ? "color-mix(in srgb, var(--brand-accent) 35%, transparent)"
+                          : `color-mix(in srgb, ${meta.color} 19%, transparent)`
                     }`,
                   }}
                 >
@@ -323,7 +323,7 @@ export function LiaPlanPreview({ plan, onExecuted }: Props) {
                   ) : st === "running" ? (
                     <Loader2
                       size={11}
-                      color="#8b5cf6"
+                      color="var(--brand-accent)"
                       style={{ animation: "spin 1s linear infinite" }}
                     />
                   ) : st === "error" ? (
@@ -351,9 +351,9 @@ export function LiaPlanPreview({ plan, onExecuted }: Props) {
                         fontSize: "0.65rem",
                         padding: "0 6px",
                         borderRadius: 99,
-                        background: `${meta.color}12`,
+                        background: `color-mix(in srgb, ${meta.color} 7%, transparent)`,
                         color: meta.color,
-                        border: `1px solid ${meta.color}25`,
+                        border: `1px solid color-mix(in srgb, ${meta.color} 15%, transparent)`,
                         whiteSpace: "nowrap",
                       }}
                     >
@@ -375,9 +375,9 @@ export function LiaPlanPreview({ plan, onExecuted }: Props) {
                           fontSize: "0.65rem",
                           padding: "0 5px",
                           borderRadius: 99,
-                          background: "rgba(59,130,246,0.1)",
+                          background: "color-mix(in srgb, var(--brand-accent) 10%, transparent)",
                           color: "#60a5fa",
-                          border: "1px solid rgba(59,130,246,0.18)",
+                          border: "1px solid color-mix(in srgb, var(--brand-accent) 18%, transparent)",
                         }}
                       >
                         ⚡ {step.skill}
@@ -435,9 +435,9 @@ export function LiaPlanPreview({ plan, onExecuted }: Props) {
                           fontSize: "0.65rem",
                           padding: "0 5px",
                           borderRadius: 99,
-                          background: "rgba(139,92,246,0.08)",
+                          background: "color-mix(in srgb, var(--brand-accent) 8%, transparent)",
                           color: "var(--text-muted)",
-                          border: "1px solid rgba(139,92,246,0.15)",
+                          border: "1px solid color-mix(in srgb, var(--brand-accent) 15%, transparent)",
                         }}
                       >
                         ← {step.depends_on.join(", ")}
@@ -593,8 +593,8 @@ export function LiaPlanPreview({ plan, onExecuted }: Props) {
               border: "none",
               cursor: executing ? "not-allowed" : "pointer",
               background: executing
-                ? "rgba(139,92,246,0.25)"
-                : "linear-gradient(135deg, #8b5cf6, #6d28d9)",
+                ? "color-mix(in srgb, var(--brand-accent) 25%, transparent)"
+                : "var(--brand-accent)",
               color: "#fff",
               fontWeight: 700,
               fontSize: "0.8rem",
@@ -602,9 +602,7 @@ export function LiaPlanPreview({ plan, onExecuted }: Props) {
               alignItems: "center",
               justifyContent: "center",
               gap: 7,
-              boxShadow: executing
-                ? "none"
-                : "0 3px 12px rgba(139,92,246,0.35)",
+              boxShadow: "none",
               transition: "all 0.2s",
               letterSpacing: "0.2px",
             }}
@@ -664,8 +662,8 @@ export function LiaPlanPreview({ plan, onExecuted }: Props) {
                       fontSize: "0.72rem",
                       color: meta.color,
                       fontWeight: 600,
-                      background: `${meta.color}10`,
-                      border: `1px solid ${meta.color}25`,
+                      background: `color-mix(in srgb, ${meta.color} 6%, transparent)`,
+                      border: `1px solid color-mix(in srgb, ${meta.color} 15%, transparent)`,
                       borderRadius: 8,
                       padding: "4px 10px",
                       cursor: "pointer",

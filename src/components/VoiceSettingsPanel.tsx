@@ -446,7 +446,7 @@ export function VoiceSettingsPanel() {
               background:
                 level > 0.7
                   ? "linear-gradient(90deg,#22c55e,#ef4444)"
-                  : "linear-gradient(90deg,#6366f1,#22c55e)",
+                  : "linear-gradient(90deg,var(--brand-accent),#22c55e)",
               transition: "width 80ms linear",
             }}
           />

@@ -82,7 +82,7 @@ const CHANNEL_DEFS: ChannelDef[] = [
     ],
   },
   {
-    id: 'nostr', name: 'Nostr', icon: MessageCircle, color: '#8b5cf6',
+    id: 'nostr', name: 'Nostr', icon: MessageCircle, color: 'var(--brand-accent)',
     plugin: '@openclaw/plugin-nostr',
     docsUrl: 'https://github.com/nostr-protocol/nostr',
     fields: [
@@ -195,7 +195,7 @@ const ChannelsPanel = () => {
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
                   {def.name}
-                  {def.plugin && <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 5, background: 'rgba(139,92,246,0.12)', color: 'var(--brand-accent)' }}>plugin requis</span>}
+                  {def.plugin && <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 5, background: 'color-mix(in srgb, var(--brand-accent) 12%, transparent)', color: 'var(--brand-accent)' }}>plugin requis</span>}
                 </div>
                 {!cfg.enabled && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, fontFamily: 'var(--mono)' }}>{def.docsUrl}</div>}
               </div>
@@ -281,8 +281,8 @@ interface SyncResult {
 // ── Config par type ───────────────────────────────────────────────────────────
 
 const TYPE_CONFIG: Record<InstanceType, { label: string; icon: React.FC<{ size?: number }>; color: string; placeholder: string; pingPath: string }> = {
-  clawboard: { label: 'Clawboard',        icon: MonitorDot, color: '#8b5cf6', placeholder: 'http://192.168.1.x:4000',  pingPath: '/api/health' },
-  vps:       { label: 'Clawboard VPS',    icon: Server,     color: '#3b82f6', placeholder: 'https://mon-vps.com:4000', pingPath: '/api/health' },
+  clawboard: { label: 'Clawboard',        icon: MonitorDot, color: 'var(--brand-accent)', placeholder: 'http://192.168.1.x:4000',  pingPath: '/api/health' },
+  vps:       { label: 'Clawboard VPS',    icon: Server,     color: 'var(--brand-accent)', placeholder: 'https://mon-vps.com:4000', pingPath: '/api/health' },
   vscode:    { label: 'VS Code / Gemini', icon: Code2,      color: '#4285f4', placeholder: 'http://localhost:5000',    pingPath: '/health'     },
   mcp:       { label: 'MCP Server',       icon: Wrench,     color: '#10b981', placeholder: 'http://localhost:3000',    pingPath: '/health'     },
   n8n:       { label: 'n8n',              icon: Workflow,   color: '#f97316', placeholder: 'http://localhost:5678',    pingPath: '/healthz'    },
@@ -707,7 +707,7 @@ function BroadcastPanel({ instances, statuses }: { instances: Instance[]; status
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Radio size={16} color="var(--brand-accent)" />
           <span style={{ fontWeight: 700, fontSize: 14 }}>Broadcast multi-instances</span>
-          <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 5, background: 'rgba(139,92,246,0.15)', color: 'var(--brand-accent)' }}>
+          <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 5, background: 'color-mix(in srgb, var(--brand-accent) 15%, transparent)', color: 'var(--brand-accent)' }}>
             {onlineInstances.length} en ligne
           </span>
         </div>
@@ -864,11 +864,11 @@ function InstanceCard({ instance, status, onPing, onDelete }: {
             {isClawboard && status?.online && (
               <>
                 <button onClick={() => setModal('sync')} title="Sync mémoire"
-                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 10px', borderRadius: 7, background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.25)', color: 'var(--brand-accent)', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 10px', borderRadius: 7, background: 'color-mix(in srgb, var(--brand-accent) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--brand-accent) 25%, transparent)', color: 'var(--brand-accent)', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>
                   <Brain size={11} /> Mémoire
                 </button>
                 <button onClick={() => setModal('push')} title="Push tâche"
-                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 10px', borderRadius: 7, background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.25)', color: '#60a5fa', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 10px', borderRadius: 7, background: 'color-mix(in srgb, var(--brand-accent) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--brand-accent) 25%, transparent)', color: 'var(--brand-accent)', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>
                   <Upload size={11} /> Push
                 </button>
                 <button onClick={() => setModal('pull')} title="Pull résultats"

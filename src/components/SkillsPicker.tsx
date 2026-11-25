@@ -113,12 +113,12 @@ export function SkillsPicker({ value, onChange }: SkillsPickerProps) {
           style={{
             display: 'flex', alignItems: 'center', gap: 5,
             padding: '9px 14px', borderRadius: 8, cursor: 'pointer',
-            background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)',
+            background: 'color-mix(in srgb, var(--brand-accent) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--brand-accent) 25%, transparent)',
             color: 'var(--brand-accent)', fontSize: '12px', fontWeight: 600,
             whiteSpace: 'nowrap', transition: 'all 0.2s',
           }}
-          onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(139,92,246,0.15)'; }}
-          onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(139,92,246,0.08)'; }}
+          onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.background = 'color-mix(in srgb, var(--brand-accent) 15%, transparent)'; }}
+          onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.background = 'color-mix(in srgb, var(--brand-accent) 8%, transparent)'; }}
         >
           <ToyBrick size={14} /> Parcourir
         </button>
@@ -148,7 +148,7 @@ export function SkillsPicker({ value, onChange }: SkillsPickerProps) {
             <div style={{
               padding: '18px 22px', borderBottom: '1px solid var(--border-subtle)',
               display: 'flex', alignItems: 'center', gap: 12,
-              background: 'linear-gradient(135deg, rgba(139,92,246,0.08), rgba(59,130,246,0.08))',
+              background: 'color-mix(in srgb, var(--brand-accent) 8%, transparent)',
             }}>
               <ToyBrick size={20} color="var(--brand-accent)" />
               <div style={{ flex: 1 }}>
@@ -187,10 +187,10 @@ export function SkillsPicker({ value, onChange }: SkillsPickerProps) {
                   <button key={cat} onClick={() => setCategory(cat)} style={{
                     padding: '6px 12px', borderRadius: 20, border: 'none', cursor: 'pointer',
                     fontWeight: 600, fontSize: '11px', transition: 'all 0.15s',
-                    background: category === cat ? 'rgba(139,92,246,0.15)' : 'var(--bg-glass)',
+                    background: category === cat ? 'color-mix(in srgb, var(--brand-accent) 15%, transparent)' : 'var(--bg-glass)',
                     color: category === cat ? 'var(--brand-accent)' : 'var(--text-muted)',
                     borderWidth: 1, borderStyle: 'solid',
-                    borderColor: category === cat ? 'rgba(139,92,246,0.3)' : 'var(--border-subtle)',
+                    borderColor: category === cat ? 'color-mix(in srgb, var(--brand-accent) 30%, transparent)' : 'var(--border-subtle)',
                   }}>
                     {cat} {cat !== 'Tous' && `(${skills.filter(s => s.source === cat).length})`}
                   </button>
@@ -222,8 +222,8 @@ export function SkillsPicker({ value, onChange }: SkillsPickerProps) {
                         onMouseLeave={() => setHovered(null)}
                         style={{
                           padding: '14px 16px', borderRadius: 12, cursor: 'pointer',
-                          background: isSelected ? 'rgba(139,92,246,0.1)' : isHov ? 'rgba(255,255,255,0.04)' : 'var(--bg-glass)',
-                          border: `1px solid ${isSelected ? 'rgba(139,92,246,0.45)' : isHov ? 'rgba(139,92,246,0.2)' : 'var(--border-subtle)'}`,
+                          background: isSelected ? 'color-mix(in srgb, var(--brand-accent) 10%, transparent)' : isHov ? 'rgba(255,255,255,0.04)' : 'var(--bg-glass)',
+                          border: `1px solid ${isSelected ? 'color-mix(in srgb, var(--brand-accent) 45%, transparent)' : isHov ? 'color-mix(in srgb, var(--brand-accent) 20%, transparent)' : 'var(--border-subtle)'}`,
                           transition: 'all 0.15s', position: 'relative',
                         }}
                       >
@@ -240,7 +240,7 @@ export function SkillsPicker({ value, onChange }: SkillsPickerProps) {
 
                         {/* Top row */}
                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
-                          <div style={{ padding: 8, background: 'rgba(139,92,246,0.1)', borderRadius: 8, flexShrink: 0 }}>
+                          <div style={{ padding: 8, background: 'color-mix(in srgb, var(--brand-accent) 10%, transparent)', borderRadius: 8, flexShrink: 0 }}>
                             <Code size={15} color="var(--brand-accent)" />
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
@@ -281,7 +281,7 @@ export function SkillsPicker({ value, onChange }: SkillsPickerProps) {
                           <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 6 }}>
                             {skill.tags.slice(0, 4).map(t => (
                               <span key={t} style={{
-                                background: 'rgba(139,92,246,0.08)', color: 'var(--brand-accent)',
+                                background: 'color-mix(in srgb, var(--brand-accent) 8%, transparent)', color: 'var(--brand-accent)',
                                 fontSize: '9px', fontWeight: 600, padding: '1px 6px', borderRadius: 3,
                               }}>#{t}</span>
                             ))}

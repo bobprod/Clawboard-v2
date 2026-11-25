@@ -9,8 +9,8 @@ export const resetDashboardTour = () => localStorage.removeItem(TOUR_KEY);
 // ─── Style helpers ────────────────────────────────────────────────────────────
 
 const box = (color: string): React.CSSProperties => ({
-  background: `${color}12`,
-  border: `1px solid ${color}30`,
+  background: `color-mix(in srgb, ${color} 7%, transparent)`,
+  border: `1px solid color-mix(in srgb, ${color} 19%, transparent)`,
   borderRadius: 9,
   padding: '10px 14px',
   fontSize: '0.8rem',
@@ -56,7 +56,7 @@ const STEPS: Step[] = [
           Ce tableau de bord est votre centre de contrôle pour <strong>Nemoclaw</strong>,
           la version sécurisée d'OpenClaw by NVIDIA. Explorons ensemble les composants clés.
         </p>
-        <div style={box('#8b5cf6')}>
+        <div style={box('var(--brand-accent)')}>
           💡 Ce tour se lance automatiquement lors de votre première visite.
           Vous pouvez le relancer depuis <strong>Aide → Rejouer le tour</strong>.
         </div>
@@ -79,7 +79,7 @@ const STEPS: Step[] = [
         <div style={{ fontSize: '0.8rem', lineHeight: 2 }}>
           <span style={chip('#ef4444', 'rgba(239,68,68,0.12)')}>CRON échoué</span>
           <span style={chip('#f59e0b', 'rgba(245,158,11,0.12)')}>Seuil de coût dépassé</span>
-          <span style={chip('#3b82f6', 'rgba(59,130,246,0.12)')}>Contexte LLM élevé</span>
+          <span style={chip('var(--brand-accent)', 'color-mix(in srgb, var(--brand-accent) 12%, transparent)')}>Contexte LLM élevé</span>
           <span style={chip('#ef4444', 'rgba(239,68,68,0.12)')}>Gateway hors ligne</span>
         </div>
         <p style={{ margin: '10px 0 0', fontSize: '0.78rem', color: '#9ca3af' }}>
@@ -96,12 +96,12 @@ const STEPS: Step[] = [
     disableBeacon: true,
     content: (
       <div>
-        <div style={label('#3b82f6')}>Indicateurs</div>
+        <div style={label('var(--brand-accent)')}>Indicateurs</div>
         <div style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 8 }}>📊 KPI Temps Réel</div>
         <p style={{ margin: '0 0 10px', fontSize: '0.82rem', lineHeight: 1.65 }}>
           4 métriques clés en direct via <strong>Server-Sent Events</strong> (SSE) — aucun rechargement manuel nécessaire.
         </p>
-        <div style={box('#3b82f6')}>
+        <div style={box('var(--brand-accent)')}>
           📡 La connexion SSE est indiquée par le badge <span style={{ color: '#10b981', fontWeight: 700 }}>● Live</span> dans le flux d'exécutions.
         </div>
       </div>
@@ -115,14 +115,14 @@ const STEPS: Step[] = [
     disableBeacon: true,
     content: (
       <div>
-        <div style={label('#8b5cf6')}>Activité</div>
+        <div style={label('var(--brand-accent)')}>Activité</div>
         <div style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 8 }}>🗓️ Heatmap 30 jours</div>
         <p style={{ margin: '0 0 10px', fontSize: '0.82rem', lineHeight: 1.65 }}>
           Visualisez vos patterns d'exécution sur les 5 dernières semaines.
           Chaque cellule représente un jour — survolez pour voir le détail.
         </p>
         <div style={{ fontSize: '0.8rem', lineHeight: 2 }}>
-          <span style={chip('#8b5cf6', 'rgba(139,92,246,0.12)')}>Intensité = nbre d'exécutions</span>
+          <span style={chip('var(--brand-accent)', 'color-mix(in srgb, var(--brand-accent) 12%, transparent)')}>Intensité = nbre d'exécutions</span>
           <span style={chip('#f59e0b', 'rgba(245,158,11,0.12)')}>🔥 Streak actuel</span>
         </div>
       </div>
@@ -201,7 +201,7 @@ const STEPS: Step[] = [
     disableBeacon: true,
     content: (
       <div>
-        <div style={label('#8b5cf6')}>Assistant IA</div>
+        <div style={label('var(--brand-accent)')}>Assistant IA</div>
         <div style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 8 }}>🤖 Agent Chat Intégré</div>
         <p style={{ margin: '0 0 10px', fontSize: '0.82rem', lineHeight: 1.65 }}>
           Votre copilote IA flottant, accessible depuis n'importe quelle page.
@@ -275,7 +275,7 @@ export const DashboardTour = () => {
         options: {
           arrowColor: '#1e293b',
           backgroundColor: '#1e293b',
-          primaryColor: '#8b5cf6',
+          primaryColor: 'var(--brand-accent)',
           textColor: '#e2e8f0',
           width: 400,
           zIndex: 10000,
@@ -283,12 +283,12 @@ export const DashboardTour = () => {
         tooltip: {
           borderRadius: 14,
           padding: '20px 22px',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(139,92,246,0.2)',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px color-mix(in srgb, var(--brand-accent) 20%, transparent)',
         },
         tooltipTitle: { fontWeight: 700, marginBottom: 6 },
         buttonNext: {
           borderRadius: 8,
-          background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)',
+          background: 'var(--brand-accent)',
           border: 'none',
           fontWeight: 600,
           fontSize: '0.82rem',
@@ -305,7 +305,7 @@ export const DashboardTour = () => {
         },
         spotlight: {
           borderRadius: 12,
-          boxShadow: '0 0 0 3px rgba(139,92,246,0.4), 0 0 40px rgba(139,92,246,0.15)',
+          boxShadow: '0 0 0 3px color-mix(in srgb, var(--brand-accent) 40%, transparent), 0 0 40px color-mix(in srgb, var(--brand-accent) 15%, transparent)',
         },
       }}
       locale={{

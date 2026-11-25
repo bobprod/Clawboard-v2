@@ -609,10 +609,10 @@ export const TerminalModule = () => {
             onClick={() => setShowTs((p) => !p)}
             title="Afficher / masquer les timestamps"
             style={{
-              background: showTs ? "rgba(139,92,246,0.12)" : "none",
+              background: showTs ? "color-mix(in srgb, var(--brand-accent) 12%, transparent)" : "none",
               border:
                 "1px solid " +
-                (showTs ? "rgba(139,92,246,0.3)" : "transparent"),
+                (showTs ? "color-mix(in srgb, var(--brand-accent) 30%, transparent)" : "transparent"),
               borderRadius: 6,
               cursor: "pointer",
               color: showTs ? "var(--brand-accent)" : "var(--text-muted)",
@@ -768,15 +768,15 @@ export const TerminalModule = () => {
             fontFamily: "var(--mono, monospace)",
             fontSize: "0.78rem",
             color: running ? "#6b7280" : "#e2e8f0",
-            caretColor: "#8b5cf6",
+            caretColor: "var(--brand-accent)",
           }}
         />
         <button
           type="submit"
           disabled={!input.trim() || running}
           style={{
-            background: "rgba(139,92,246,0.1)",
-            border: "1px solid rgba(139,92,246,0.2)",
+            background: "color-mix(in srgb, var(--brand-accent) 10%, transparent)",
+            border: "1px solid color-mix(in srgb, var(--brand-accent) 20%, transparent)",
             borderRadius: 6,
             color: "var(--brand-accent)",
             cursor: "pointer",

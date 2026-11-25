@@ -264,11 +264,11 @@ function TreeNode({
           borderRadius: "6px",
           transition: "background 0.15s",
           fontSize: "12px",
-          background: isActive ? "rgba(139,92,246,0.12)" : "transparent",
+          background: isActive ? "color-mix(in srgb, var(--brand-accent) 12%, transparent)" : "transparent",
           borderLeft: isActive ? "2px solid var(--brand-accent)" : "2px solid transparent",
         }}
         onMouseEnter={(e) => {
-          if (!isActive) e.currentTarget.style.background = "rgba(139,92,246,0.06)";
+          if (!isActive) e.currentTarget.style.background = "color-mix(in srgb, var(--brand-accent) 6%, transparent)";
         }}
         onMouseLeave={(e) => {
           if (!isActive) e.currentTarget.style.background = "transparent";

@@ -21,8 +21,8 @@ const MODEL_LABELS: Record<string, string> = {
 };
 
 const MODEL_COLORS: Record<string, string> = {
-  'claude-opus-4-6':   '#8b5cf6',
-  'claude-sonnet-4-6': '#3b82f6',
+  'claude-opus-4-6':   'var(--brand-accent)',
+  'claude-sonnet-4-6': 'var(--brand-accent)',
   'ollama/qwen2.5':    '#10b981',
   'ollama/llama3.2':   '#f59e0b',
 };

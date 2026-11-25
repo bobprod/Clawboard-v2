@@ -171,7 +171,7 @@ function TotpMfaPanel() {
               padding: '10px 20px', background: 'var(--brand-accent)', color: '#fff',
               border: 'none', borderRadius: 9, cursor: loading ? 'not-allowed' : 'pointer',
               fontWeight: 600, fontSize: 13.5, opacity: loading ? 0.6 : 1,
-              boxShadow: '0 4px 14px rgba(139,92,246,0.35)',
+              boxShadow: 'none',
             }}
           >
             {loading
@@ -189,8 +189,8 @@ function TotpMfaPanel() {
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
             <div style={{
               background: '#fff', borderRadius: 12, padding: 6,
-              border: '2px solid rgba(139,92,246,0.3)',
-              boxShadow: '0 0 20px rgba(139,92,246,0.2)',
+              border: '2px solid color-mix(in srgb, var(--brand-accent) 30%, transparent)',
+              boxShadow: '0 0 20px color-mix(in srgb, var(--brand-accent) 20%, transparent)',
             }}>
               <img src={qrUrl} alt="QR TOTP" width={180} height={180} style={{ display: 'block', borderRadius: 8 }} />
             </div>

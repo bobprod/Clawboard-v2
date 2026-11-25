@@ -103,7 +103,7 @@ export const LoginPage = ({ onLogin }: LoginPageProps) => {
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             width: 64, height: 64, borderRadius: '18px',
             background: 'linear-gradient(135deg, var(--brand-primary), var(--brand-accent))',
-            boxShadow: '0 0 30px rgba(139,92,246,0.4)',
+            boxShadow: '0 0 30px color-mix(in srgb, var(--brand-accent) 40%, transparent)',
             marginBottom: '16px',
           }}>
             <BrainCircuit size={32} color="#fff" />
@@ -203,7 +203,7 @@ export const LoginPage = ({ onLogin }: LoginPageProps) => {
               padding: '12px', borderRadius: '10px', border: 'none',
               background: 'linear-gradient(135deg, var(--brand-primary), var(--brand-accent))',
               color: '#fff', fontWeight: 700, fontSize: '0.95rem', cursor: loading ? 'not-allowed' : 'pointer',
-              boxShadow: '0 4px 20px rgba(139,92,246,0.35)',
+              boxShadow: '0 4px 20px color-mix(in srgb, var(--brand-accent) 35%, transparent)',
               opacity: loading ? 0.8 : 1,
               transition: 'all 0.2s', marginTop: '4px',
             }}

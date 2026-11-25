@@ -235,7 +235,7 @@ export function TeamMode() {
   if (loading) {
     return (
       <div className="glass-panel p-6" style={{ textAlign: "center", padding: 48 }}>
-        <Loader2 size={32} className="animate-spin" style={{ color: "var(--accent, #8b5cf6)" }} />
+        <Loader2 size={32} className="animate-spin" style={{ color: "var(--brand-accent)" }} />
         <p className="text-muted" style={{ marginTop: 12 }}>Loading Team Mode...</p>
       </div>
     );
@@ -246,7 +246,7 @@ export function TeamMode() {
       {/* Header */}
       <div className="glass-panel p-6" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Users size={24} style={{ color: "var(--accent, #8b5cf6)" }} />
+          <Users size={24} style={{ color: "var(--brand-accent)" }} />
           <div>
             <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>Team Mode</h2>
             <p className="text-muted" style={{ margin: 0 }}>
@@ -263,7 +263,7 @@ export function TeamMode() {
             padding: "8px 16px",
             borderRadius: 8,
             border: "none",
-            background: "var(--accent, #8b5cf6)",
+            background: "var(--brand-accent)",
             color: "#fff",
             cursor: "pointer",
             fontSize: 13,
@@ -425,8 +425,8 @@ export function TeamMode() {
                           gap: 4,
                           padding: "6px 12px",
                           borderRadius: 8,
-                          border: `1px solid ${selected ? "var(--accent, #8b5cf6)" : "var(--border-subtle, rgba(255,255,255,0.1))"}`,
-                          background: selected ? "var(--accent, #8b5cf6)" : "transparent",
+                          border: `1px solid ${selected ? "var(--brand-accent)" : "var(--border-subtle, rgba(255,255,255,0.1))"}`,
+                          background: selected ? "var(--brand-accent)" : "transparent",
                           color: selected ? "#fff" : "var(--text-primary, #fff)",
                           cursor: "pointer",
                           fontSize: 12,
@@ -476,8 +476,8 @@ export function TeamMode() {
                   padding: "10px 14px",
                   textAlign: "left",
                   cursor: "pointer",
-                  border: activeSession === s.id ? "1px solid var(--accent, #8b5cf6)" : undefined,
-                  background: activeSession === s.id ? "var(--accent, #8b5cf6)11" : undefined,
+                  border: activeSession === s.id ? "1px solid var(--brand-accent)" : undefined,
+                  background: activeSession === s.id ? "color-mix(in srgb, var(--brand-accent) 7%, transparent)" : undefined,
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -605,7 +605,7 @@ export function TeamMode() {
                         gap: 8,
                         padding: "8px 10px",
                         borderRadius: 8,
-                        background: msg.read ? "transparent" : "var(--accent, #8b5cf6)08",
+                        background: msg.read ? "transparent" : "color-mix(in srgb, var(--brand-accent) 3%, transparent)",
                         border: "1px solid var(--border-subtle, rgba(255,255,255,0.06))",
                         fontSize: 12,
                       }}
@@ -667,7 +667,7 @@ const btnPrimaryStyle: React.CSSProperties = {
   padding: "6px 12px",
   borderRadius: 8,
   border: "none",
-  background: "var(--accent, #8b5cf6)",
+  background: "var(--brand-accent)",
   color: "#fff",
   cursor: "pointer",
   fontSize: 12,

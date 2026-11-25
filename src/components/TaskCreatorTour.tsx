@@ -9,8 +9,8 @@ export const resetTaskCreatorTour = () => localStorage.removeItem(CREATOR_TOUR_K
 // ─── Shared style helpers ─────────────────────────────────────────────────────
 
 const box = (color: string): React.CSSProperties => ({
-  background: `${color}12`,
-  border: `1px solid ${color}30`,
+  background: `color-mix(in srgb, ${color} 7%, transparent)`,
+  border: `1px solid color-mix(in srgb, ${color} 19%, transparent)`,
   borderRadius: 9,
   padding: '10px 14px',
   fontSize: '0.8rem',
@@ -315,7 +315,7 @@ Donne ta réponse finale après, dans le format demandé.`}</div>
             <div>La précision du format de sortie est critique</div>
           </div>
         </div>
-        <div style={box('#8b5cf6')}>
+        <div style={box('var(--brand-accent)')}>
           <div style={label('#c4b5fd')}>Workflow recommandé</div>
           <span>Écris une phrase brute →
           clique Enhance → <strong>relis et ajuste</strong> (Enhance peut inventer du contexte).
@@ -419,11 +419,11 @@ Exemple — veille web en 12 étapes avec recherches :
   → règle timeout à 30 min`}</div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: '0.8rem' }}>
-          <div style={box('#3b82f6')}>
+          <div style={box('var(--brand-accent)')}>
             <strong>5–15 min</strong><br />
             Réponses simples, extraction directe, résumés courts.
           </div>
-          <div style={box('#8b5cf6')}>
+          <div style={box('var(--brand-accent)')}>
             <strong>30 min</strong><br />
             Analyse standard avec 5–10 étapes. Valeur par défaut sûre.
           </div>
@@ -484,7 +484,7 @@ Exemple — veille web en 12 étapes avec recherches :
           C'est la source de confusion numéro 1. Ces deux champs ne disent pas la même chose à l'agent :
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: '0.82rem', marginBottom: 10 }}>
-          <div style={box('#3b82f6')}>
+          <div style={box('var(--brand-accent)')}>
             <div style={label('#93c5fd')}>📝 Instructions = COMMENT agir</div>
             <div>Définissent le <strong>processus</strong> : les étapes, le rôle, les outils à utiliser, le format de sortie.</div>
           </div>
@@ -495,7 +495,7 @@ Exemple — veille web en 12 étapes avec recherches :
         </div>
         <div style={{ fontSize: '0.81rem', marginBottom: 8 }}>
           <div style={{ opacity: 0.75, marginBottom: 6 }}>Pour une tâche <em>"Analyser les logs prod"</em> :</div>
-          <div style={box('#3b82f6')}>
+          <div style={box('var(--brand-accent)')}>
             <strong style={{ color: '#93c5fd' }}>Instructions :</strong> "Tu es un SRE. Analyse les logs fournis. Classe chaque entrée par niveau. Retourne un rapport JSON."
           </div>
           <div style={box('#10b981')}>
@@ -596,13 +596,13 @@ Exemple — veille web en 12 étapes avec recherches :
             ['🔄 CRON', 'Créer une récurrence : "exécute ce modèle tous les matins à 7h"'],
             ['📋 Template', 'Cloner et adapter pour créer des variantes (prod vs staging, FR vs EN)'],
           ].map(([action, desc]) => (
-            <div key={String(action)} style={{ display: 'flex', gap: 10, background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 7, padding: '8px 12px', alignItems: 'flex-start' }}>
+            <div key={String(action)} style={{ display: 'flex', gap: 10, background: 'color-mix(in srgb, var(--brand-accent) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--brand-accent) 20%, transparent)', borderRadius: 7, padding: '8px 12px', alignItems: 'flex-start' }}>
               <strong style={{ color: '#c4b5fd', flexShrink: 0, width: 70 }}>{action}</strong>
               <span style={{ opacity: 0.85 }}>{desc}</span>
             </div>
           ))}
         </div>
-        <div style={box('#3b82f6')}>
+        <div style={box('var(--brand-accent)')}>
           <div style={label('#93c5fd')}>Workflow d'automatisation en 3 étapes</div>
           <span>Créer → tester → sauvegarder comme modèle → créer une récurrence CRON sur ce modèle.
           C'est comme ça que tu passes d'une tâche manuelle à un pipeline entièrement automatisé.</span>
@@ -739,7 +739,7 @@ export const TaskCreatorTour = ({ forceRun = false, onClose }: TaskCreatorTourPr
       }}
       styles={{
         options: {
-          primaryColor: '#8b5cf6',
+          primaryColor: 'var(--brand-accent)',
           backgroundColor: '#1a1625',
           textColor: '#e2e8f0',
           arrowColor: '#1a1625',
@@ -749,7 +749,7 @@ export const TaskCreatorTour = ({ forceRun = false, onClose }: TaskCreatorTourPr
         },
         tooltip: {
           borderRadius: 14,
-          boxShadow: '0 10px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(139,92,246,0.28)',
+          boxShadow: '0 10px 48px rgba(0,0,0,0.6), 0 0 0 1px color-mix(in srgb, var(--brand-accent) 28%, transparent)',
           padding: '22px 26px 18px',
         },
         tooltipTitle: {
@@ -770,12 +770,12 @@ export const TaskCreatorTour = ({ forceRun = false, onClose }: TaskCreatorTourPr
           borderTop: '1px solid rgba(255,255,255,0.07)',
         },
         buttonNext: {
-          background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)',
+          background: 'var(--brand-accent)',
           borderRadius: 9,
           fontSize: '0.875rem',
           fontWeight: 600,
           padding: '9px 20px',
-          boxShadow: '0 4px 14px rgba(139,92,246,0.38)',
+          boxShadow: 'none',
         },
         buttonBack: {
           color: '#94a3b8',
@@ -788,7 +788,7 @@ export const TaskCreatorTour = ({ forceRun = false, onClose }: TaskCreatorTourPr
         },
         spotlight: {
           borderRadius: 12,
-          boxShadow: '0 0 0 2px rgba(139,92,246,0.45), 0 0 0 9999px rgba(0,0,0,0.62)',
+          boxShadow: '0 0 0 2px color-mix(in srgb, var(--brand-accent) 45%, transparent), 0 0 0 9999px rgba(0,0,0,0.62)',
         },
         buttonClose: {
           color: '#64748b',

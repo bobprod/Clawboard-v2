@@ -282,7 +282,7 @@ export const Dashboard = () => {
                 icon: Clock,
                 label: "CRONs Actifs",
                 value: kpis.cronsActive,
-                color: "rgba(139,92,246,0.1)",
+                color: "color-mix(in srgb, var(--brand-accent) 10%, transparent)",
                 iconColor: "var(--brand-accent)",
               },
               {
@@ -534,9 +534,9 @@ export const Dashboard = () => {
             gap: "8px",
             padding: "8px 16px",
             background: configOpen
-              ? "rgba(139,92,246,0.15)"
+              ? "color-mix(in srgb, var(--brand-accent) 15%, transparent)"
               : "rgba(255,255,255,0.05)",
-            border: `1px solid ${configOpen ? "rgba(139,92,246,0.3)" : "var(--border-subtle)"}`,
+            border: `1px solid ${configOpen ? "color-mix(in srgb, var(--brand-accent) 30%, transparent)" : "var(--border-subtle)"}`,
             borderRadius: "var(--radius-full)",
             cursor: "pointer",
             color: configOpen ? "var(--brand-accent)" : "var(--text-secondary)",
@@ -614,11 +614,11 @@ export const Dashboard = () => {
                     cursor: "grab",
                     background:
                       dragOverIdx === idx
-                        ? "rgba(139,92,246,0.1)"
+                        ? "color-mix(in srgb, var(--brand-accent) 10%, transparent)"
                         : "transparent",
                     border:
                       dragOverIdx === idx
-                        ? "1px dashed rgba(139,92,246,0.4)"
+                        ? "1px dashed color-mix(in srgb, var(--brand-accent) 40%, transparent)"
                         : "1px solid transparent",
                     opacity: dragIdx === idx ? 0.5 : 1,
                     transition: "all 0.15s",

@@ -69,10 +69,10 @@ const PROVIDER_COLOR: Record<string, string> = {
   gemini:    "#4285f4",
   openai:    "#10a37f",
   nvidia:    "#76b900",
-  nemoclaw:  "#8b5cf6",
+  nemoclaw:  "var(--brand-accent)",
   mistral:   "#ff7000",
-  ollama:    "#7c3aed",
-  qwen:      "#3b82f6",
+  ollama:    "var(--brand-accent)",
+  qwen:      "var(--brand-accent)",
   llama:     "#f59e0b",
   default:   "#6b7280",
 };
@@ -96,8 +96,8 @@ const CLI_META: Record<string, { emoji: string; color: string; desc: string }> =
   openclaw:  { emoji: "🦞", color: "#76b900", desc: "NVIDIA — NemoClaw / OpenClaw"},
   hermes:    { emoji: "🟡", color: "#f59e0b", desc: "Hermes Agent"                },
   n8n:       { emoji: "🟠", color: "#f97316", desc: "n8n Workflow Automation"     },
-  antigravity:{ emoji: "🚀",color: "#6366f1", desc: "Google AntiGravity"          },
-  ollama:    { emoji: "🟣", color: "#7c3aed", desc: "Ollama — Modèles locaux"     },
+  antigravity:{ emoji: "🚀",color: "var(--brand-accent)", desc: "Google AntiGravity"          },
+  ollama:    { emoji: "🟣", color: "var(--brand-accent)", desc: "Ollama — Modèles locaux"     },
 };
 
 function cliMeta(name: string) {
@@ -342,10 +342,9 @@ function ActionBtn({ icon, label, onClick, accent, small }: {
         borderRadius: small ? 8 : 10, fontSize: small ? 11 : 12, fontWeight: 600,
         cursor: "pointer", transition: "all 0.2s", border: "none",
         background: accent
-          ? hov ? "rgba(139,92,246,0.3)" : "rgba(139,92,246,0.15)"
+          ? hov ? "color-mix(in srgb, var(--brand-accent) 30%, transparent)" : "color-mix(in srgb, var(--brand-accent) 15%, transparent)"
           : hov ? "rgba(255,255,255,0.08)" : "var(--bg-glass)",
         color: accent ? "var(--brand-accent)" : "var(--text-secondary)",
-        boxShadow: accent && hov ? "0 0 12px rgba(139,92,246,0.3)" : undefined,
       }}
     >
       {icon}{label}
@@ -610,8 +609,8 @@ export const AgentsOverview = () => {
 
       {/* ── Hero banner ─────────────────────────────────────────────── */}
       <div style={{
-        background: "linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(56,189,248,0.05) 100%)",
-        border: "1px solid rgba(139,92,246,0.15)", borderRadius: 16,
+        background: "linear-gradient(135deg, color-mix(in srgb, var(--brand-accent) 8%, transparent) 0%, rgba(56,189,248,0.05) 100%)",
+        border: "1px solid color-mix(in srgb, var(--brand-accent) 15%, transparent)", borderRadius: 16,
         padding: "20px 24px",
         display: "flex", alignItems: "flex-start", justifyContent: "space-between",
         gap: 16, flexWrap: "wrap",
@@ -648,8 +647,8 @@ export const AgentsOverview = () => {
           </button>
           <button onClick={() => navigate("/agents?tab=installer")}
             style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 16px",
-              borderRadius: 10, border: "1px solid rgba(139,92,246,0.3)", fontSize: 13,
-              fontWeight: 600, cursor: "pointer", background: "rgba(139,92,246,0.12)",
+              borderRadius: 10, border: "1px solid color-mix(in srgb, var(--brand-accent) 30%, transparent)", fontSize: 13,
+              fontWeight: 600, cursor: "pointer", background: "color-mix(in srgb, var(--brand-accent) 12%, transparent)",
               color: "var(--brand-accent)", transition: "all 0.2s" }}>
             <Plus size={14} />
             Ajouter un agent
@@ -749,7 +748,7 @@ export const AgentsOverview = () => {
                 justifyContent: "center", gap: 8, minHeight: 140,
                 color: "var(--text-muted)", transition: "all 0.2s",
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = "rgba(139,92,246,0.06)"; e.currentTarget.style.color = "var(--brand-accent)"; }}
+              onMouseEnter={e => { e.currentTarget.style.background = "color-mix(in srgb, var(--brand-accent) 6%, transparent)"; e.currentTarget.style.color = "var(--brand-accent)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "var(--bg-glass)"; e.currentTarget.style.color = "var(--text-muted)"; }}
             >
               <Download size={20} />
@@ -771,8 +770,8 @@ export const AgentsOverview = () => {
         </button>
         <button onClick={() => navigate("/agents?tab=cowork")}
           style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px",
-            borderRadius: 10, border: "1px solid rgba(139,92,246,0.25)", fontSize: 13,
-            fontWeight: 600, cursor: "pointer", background: "rgba(139,92,246,0.08)",
+            borderRadius: 10, border: "1px solid color-mix(in srgb, var(--brand-accent) 25%, transparent)", fontSize: 13,
+            fontWeight: 600, cursor: "pointer", background: "color-mix(in srgb, var(--brand-accent) 8%, transparent)",
             color: "var(--brand-accent)", transition: "all 0.2s" }}>
           <Zap size={15} />
           Lancer une session Cowork

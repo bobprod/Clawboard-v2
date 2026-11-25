@@ -124,31 +124,31 @@ Réponds TOUJOURS en français. Sois concis et actionnable.`;
 function getChips(ctx: TaskChatContext): { label: string; icon: string; prompt: string; color: string }[] {
   const base = [
     { label: 'Que fait cette tâche ?', icon: '💡', color: '#f59e0b', prompt: `Explique brièvement ce que fait la tâche "${ctx.taskName}" avec l'agent ${ctx.agent || 'main'}.` },
-    { label: 'Optimiser le prompt',    icon: '🎯', color: '#8b5cf6', prompt: `Comment optimiser les instructions de la tâche "${ctx.taskName}" pour de meilleurs résultats ?` },
+    { label: 'Optimiser le prompt',    icon: '🎯', color: 'var(--brand-accent)', prompt: `Comment optimiser les instructions de la tâche "${ctx.taskName}" pour de meilleurs résultats ?` },
   ];
   if (ctx.status === 'failed') return [
     { label: 'Pourquoi ça a échoué ?', icon: '🔍', color: '#ef4444', prompt: `La tâche "${ctx.taskName}" a échoué. ${ctx.errorMsg ? `Erreur : ${ctx.errorMsg}.` : ''} Explique la cause probable et propose une correction.` },
     { label: 'Corriger et relancer',   icon: '🔄', color: '#10b981', prompt: `Propose une correction concrète pour que la tâche "${ctx.taskName}" réussisse, en tenant compte de l'erreur précédente.` },
-    { label: 'Analyser les logs',      icon: '📋', color: '#3b82f6', prompt: `Analyse les logs de la tâche "${ctx.taskName}" et identifie les points critiques. ${ctx.lastLog ? `Dernière sortie : ${ctx.lastLog.slice(0, 300)}` : ''}` },
+    { label: 'Analyser les logs',      icon: '📋', color: 'var(--brand-accent)', prompt: `Analyse les logs de la tâche "${ctx.taskName}" et identifie les points critiques. ${ctx.lastLog ? `Dernière sortie : ${ctx.lastLog.slice(0, 300)}` : ''}` },
   ];
   if (ctx.status === 'running') return [
-    { label: 'Status actuel',          icon: '📊', color: '#3b82f6', prompt: `Quelle est la progression actuelle de la tâche "${ctx.taskName}" ? Que fait-elle en ce moment ?` },
+    { label: 'Status actuel',          icon: '📊', color: 'var(--brand-accent)', prompt: `Quelle est la progression actuelle de la tâche "${ctx.taskName}" ? Que fait-elle en ce moment ?` },
     { label: 'Estimation restante',    icon: '⏱️', color: '#f59e0b', prompt: `Estime le temps restant pour que la tâche "${ctx.taskName}" se termine, basé sur son profil habituel.` },
     ...base,
   ];
   if (ctx.status === 'completed') return [
     { label: 'Résumé des résultats',   icon: '📈', color: '#10b981', prompt: `Résume les résultats de la dernière exécution réussie de "${ctx.taskName}".` },
     { label: 'Optimiser pour la suite',icon: '💡', color: '#f59e0b', prompt: `Comment améliorer la tâche "${ctx.taskName}" pour la prochaine exécution ?` },
-    { label: 'Créer une variante',     icon: '🔄', color: '#8b5cf6', prompt: `Propose une variante de la tâche "${ctx.taskName}" avec un objectif légèrement différent.` },
+    { label: 'Créer une variante',     icon: '🔄', color: 'var(--brand-accent)', prompt: `Propose une variante de la tâche "${ctx.taskName}" avec un objectif légèrement différent.` },
   ];
   if (ctx.module === 'approval') return [
     { label: 'Quels sont les risques ?',icon: '⚠️', color: '#ef4444', prompt: `Analyse les risques de cette action en attente d'approbation pour la tâche "${ctx.taskName}".` },
     { label: "Critères d'approbation", icon: '✅', color: '#10b981', prompt: `Quels critères devrais-je vérifier avant d'approuver l'action de la tâche "${ctx.taskName}" ?` },
-    { label: 'Négocier les paramètres',icon: '🤝', color: '#3b82f6', prompt: `Comment puis-je réduire la portée ou l'impact de l'action demandée par "${ctx.taskName}" tout en atteignant l'objectif ?` },
+    { label: 'Négocier les paramètres',icon: '🤝', color: 'var(--brand-accent)', prompt: `Comment puis-je réduire la portée ou l'impact de l'action demandée par "${ctx.taskName}" tout en atteignant l'objectif ?` },
   ];
   if (ctx.module === 'agent') return [
-    { label: "Capacités de l'agent",  icon: '🤖', color: '#8b5cf6', prompt: `Quelles sont les capacités et les limites de l'agent "${ctx.agent || ctx.taskName}" ?` },
-    { label: 'Intégrations possibles', icon: '🔗', color: '#3b82f6', prompt: `Avec quels autres agents ou outils l'agent "${ctx.agent || ctx.taskName}" peut-il collaborer ?` },
+    { label: "Capacités de l'agent",  icon: '🤖', color: 'var(--brand-accent)', prompt: `Quelles sont les capacités et les limites de l'agent "${ctx.agent || ctx.taskName}" ?` },
+    { label: 'Intégrations possibles', icon: '🔗', color: 'var(--brand-accent)', prompt: `Avec quels autres agents ou outils l'agent "${ctx.agent || ctx.taskName}" peut-il collaborer ?` },
     ...base,
   ];
   return base;
@@ -157,12 +157,12 @@ function getChips(ctx: TaskChatContext): { label: string; icon: string; prompt: 
 // ─── Chips Lia (planning) ─────────────────────────────────────────────────────
 
 const LIA_CHIPS = [
-  { label: 'Scraper un site',      icon: '🕷️', color: '#3b82f6', prompt: 'Je veux scraper un site web et extraire des données structurées. Propose-moi un plan.' },
-  { label: 'Créer du contenu',     icon: '✍️', color: '#8b5cf6', prompt: 'Je veux générer du contenu (article, post, newsletter). Propose-moi un plan selon mon besoin.' },
+  { label: 'Scraper un site',      icon: '🕷️', color: 'var(--brand-accent)', prompt: 'Je veux scraper un site web et extraire des données structurées. Propose-moi un plan.' },
+  { label: 'Créer du contenu',     icon: '✍️', color: 'var(--brand-accent)', prompt: 'Je veux générer du contenu (article, post, newsletter). Propose-moi un plan selon mon besoin.' },
   { label: 'Tâche de code',        icon: '💻', color: '#10b981', prompt: 'Je veux automatiser une tâche de développement (génération, refactoring, fix). Propose un plan.' },
   { label: 'Analyser des données', icon: '📊', color: '#f59e0b', prompt: 'Je veux analyser un jeu de données et générer un rapport. Propose-moi un plan complet.' },
   { label: 'Surveillance récurrente', icon: '👁️', color: '#ef4444', prompt: 'Je veux surveiller quelque chose régulièrement (site, API, prix) et recevoir des alertes. Propose un plan.' },
-  { label: 'Sécurité & audit',     icon: '🔒', color: '#6366f1', prompt: 'Je veux auditer la sécurité de mon application ou API. Propose un plan d\'analyse.' },
+  { label: 'Sécurité & audit',     icon: '🔒', color: 'var(--brand-accent)', prompt: 'Je veux auditer la sécurité de mon application ou API. Propose un plan d\'analyse.' },
 ];
 
 // ─── Bubble ────────────────────────────────────────────────────────────────────
@@ -181,22 +181,22 @@ function Bubble({ msg }: { msg: Msg }) {
       <div style={{
         width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
         background: isUser
-          ? 'linear-gradient(135deg, var(--brand-accent), #6d28d9)'
+          ? 'var(--brand-accent)'
           : 'linear-gradient(135deg, #1e293b, #0f172a)',
-        border: isUser ? 'none' : '1px solid rgba(139,92,246,0.25)',
+        border: isUser ? 'none' : '1px solid color-mix(in srgb, var(--brand-accent) 25%, transparent)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        boxShadow: isUser ? '0 2px 8px rgba(139,92,246,0.3)' : 'none',
+        boxShadow: isUser ? '0 2px 8px color-mix(in srgb, var(--brand-accent) 30%, transparent)' : 'none',
       }}>
         {isUser
           ? <User size={13} color="#fff" />
-          : <Bot size={13} color="#8b5cf6" />
+          : <Bot size={13} color="var(--brand-accent)" />
         }
       </div>
 
       <div style={{ maxWidth: '76%', display: 'flex', flexDirection: 'column', gap: 3, alignItems: isUser ? 'flex-end' : 'flex-start' }}>
         <div style={{
           background: isUser
-            ? 'linear-gradient(135deg, var(--brand-accent) 0%, #6d28d9 100%)'
+            ? 'var(--brand-accent)'
             : 'var(--bg-glass)',
           border: isUser ? 'none' : '1px solid var(--border-subtle)',
           borderRadius: isUser ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
@@ -204,13 +204,13 @@ function Bubble({ msg }: { msg: Msg }) {
           fontSize: '0.82rem', lineHeight: 1.6,
           color: isUser ? '#fff' : 'var(--text-primary)',
           wordBreak: 'break-word', whiteSpace: 'pre-wrap',
-          boxShadow: isUser ? '0 4px 12px rgba(139,92,246,0.2)' : '0 1px 4px rgba(0,0,0,0.1)',
+          boxShadow: isUser ? '0 4px 12px color-mix(in srgb, var(--brand-accent) 20%, transparent)' : '0 1px 4px rgba(0,0,0,0.1)',
         }}>
           {msg.typing ? (
             <span style={{ display: 'flex', gap: 4, alignItems: 'center', padding: '2px 0' }}>
-              <span style={{ animation: 'dot1 1.4s ease-in-out infinite', width: 6, height: 6, borderRadius: '50%', background: '#8b5cf6', display: 'inline-block' }} />
-              <span style={{ animation: 'dot2 1.4s ease-in-out infinite', width: 6, height: 6, borderRadius: '50%', background: '#8b5cf6', display: 'inline-block' }} />
-              <span style={{ animation: 'dot3 1.4s ease-in-out infinite', width: 6, height: 6, borderRadius: '50%', background: '#8b5cf6', display: 'inline-block' }} />
+              <span style={{ animation: 'dot1 1.4s ease-in-out infinite', width: 6, height: 6, borderRadius: '50%', background: 'var(--brand-accent)', display: 'inline-block' }} />
+              <span style={{ animation: 'dot2 1.4s ease-in-out infinite', width: 6, height: 6, borderRadius: '50%', background: 'var(--brand-accent)', display: 'inline-block' }} />
+              <span style={{ animation: 'dot3 1.4s ease-in-out infinite', width: 6, height: 6, borderRadius: '50%', background: 'var(--brand-accent)', display: 'inline-block' }} />
             </span>
           ) : msg.content}
         </div>
@@ -355,7 +355,7 @@ export function TaskChatDrawer({ ctx, onClose }: Props) {
 
   const chips = liaMode ? LIA_CHIPS : getChips(ctx);
   const agentLabel = liaMode ? 'Lia' : (ctx.agent || ctx.taskName);
-  const statusColors: Record<string, string> = { failed: '#ef4444', completed: '#10b981', running: '#f59e0b', pending: '#3b82f6' };
+  const statusColors: Record<string, string> = { failed: '#ef4444', completed: '#10b981', running: '#f59e0b', pending: 'var(--brand-accent)' };
   const statusColor = statusColors[ctx.status || ''] || 'var(--text-muted)';
   const hasMessages = msgs.filter(m => m.role === 'user').length > 0;
 
@@ -375,11 +375,11 @@ export function TaskChatDrawer({ ctx, onClose }: Props) {
         zIndex: 1001, display: 'flex', flexDirection: 'column',
         boxShadow: '-12px 0 60px rgba(0,0,0,0.5)',
         animation: 'slideInRight 0.25s cubic-bezier(0.34,1.56,0.64,1)',
-        borderLeft: '1px solid rgba(139,92,246,0.15)',
+        borderLeft: '1px solid color-mix(in srgb, var(--brand-accent) 15%, transparent)',
       }}>
 
         {/* Accent bar top */}
-        <div style={{ height: 3, background: liaMode ? 'linear-gradient(90deg,#8b5cf6,#6d28d9)' : 'linear-gradient(90deg,#3b82f6,#8b5cf6)', flexShrink: 0, transition: 'background 0.3s' }} />
+        <div style={{ height: 3, background: 'var(--brand-accent)', flexShrink: 0, transition: 'background 0.3s' }} />
 
         {/* Header */}
         <div style={{ padding: '16px 18px 12px', flexShrink: 0, borderBottom: '1px solid var(--border-subtle)' }}>
@@ -388,15 +388,15 @@ export function TaskChatDrawer({ ctx, onClose }: Props) {
             <div style={{
               width: 42, height: 42, borderRadius: 14, flexShrink: 0,
               background: liaMode
-                ? 'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(109,40,217,0.3))'
-                : 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(139,92,246,0.15))',
-              border: `1px solid ${liaMode ? 'rgba(139,92,246,0.4)' : 'rgba(59,130,246,0.3)'}`,
+                ? 'linear-gradient(135deg, color-mix(in srgb, var(--brand-accent) 20%, transparent), color-mix(in srgb, var(--brand-accent) 30%, transparent))'
+                : 'color-mix(in srgb, var(--brand-accent) 15%, transparent)',
+              border: `1px solid ${liaMode ? 'color-mix(in srgb, var(--brand-accent) 40%, transparent)' : 'color-mix(in srgb, var(--brand-accent) 30%, transparent)'}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: `0 4px 16px ${liaMode ? 'rgba(139,92,246,0.2)' : 'rgba(59,130,246,0.15)'}`,
+              boxShadow: `0 4px 16px ${liaMode ? 'color-mix(in srgb, var(--brand-accent) 20%, transparent)' : 'color-mix(in srgb, var(--brand-accent) 15%, transparent)'}`,
             }}>
               {liaMode
-                ? <Sparkles size={20} color="#8b5cf6" />
-                : <Bot size={20} color="#3b82f6" />
+                ? <Sparkles size={20} color="var(--brand-accent)" />
+                : <Bot size={20} color="var(--brand-accent)" />
               }
             </div>
 
@@ -446,8 +446,8 @@ export function TaskChatDrawer({ ctx, onClose }: Props) {
             <button onClick={() => setLiaMode(false)} style={{
               padding: '5px 14px', borderRadius: 7, border: 'none', cursor: 'pointer',
               fontSize: '11px', fontWeight: 600, fontFamily: 'inherit',
-              background: !liaMode ? 'rgba(59,130,246,0.18)' : 'transparent',
-              color: !liaMode ? '#3b82f6' : 'var(--text-muted)',
+              background: !liaMode ? 'color-mix(in srgb, var(--brand-accent) 18%, transparent)' : 'transparent',
+              color: !liaMode ? 'var(--brand-accent)' : 'var(--text-muted)',
               transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 5,
             }}>
               <Bot size={11} />{ctx.agent || 'Agent'}
@@ -455,8 +455,8 @@ export function TaskChatDrawer({ ctx, onClose }: Props) {
             <button onClick={() => setLiaMode(true)} style={{
               padding: '5px 14px', borderRadius: 7, border: 'none', cursor: 'pointer',
               fontSize: '11px', fontWeight: 600, fontFamily: 'inherit',
-              background: liaMode ? 'rgba(139,92,246,0.18)' : 'transparent',
-              color: liaMode ? '#8b5cf6' : 'var(--text-muted)',
+              background: liaMode ? 'color-mix(in srgb, var(--brand-accent) 18%, transparent)' : 'transparent',
+              color: liaMode ? 'var(--brand-accent)' : 'var(--text-muted)',
               transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 5,
             }}>
               <Sparkles size={11} />Lia
@@ -478,15 +478,15 @@ export function TaskChatDrawer({ ctx, onClose }: Props) {
                   disabled={loading}
                   style={{
                     padding: '6px 12px', borderRadius: 20,
-                    border: `1px solid ${chip.color}30`,
-                    background: `${chip.color}10`,
+                    border: `1px solid color-mix(in srgb, ${chip.color} 19%, transparent)`,
+                    background: `color-mix(in srgb, ${chip.color} 6%, transparent)`,
                     color: chip.color,
                     fontSize: '11.5px', fontWeight: 500, cursor: 'pointer',
                     fontFamily: 'inherit', transition: 'all 0.15s',
                     display: 'flex', alignItems: 'center', gap: 5,
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.background = `${chip.color}20`; e.currentTarget.style.borderColor = `${chip.color}50`; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = `${chip.color}10`; e.currentTarget.style.borderColor = `${chip.color}30`; }}
+                  onMouseEnter={e => { e.currentTarget.style.background = `color-mix(in srgb, ${chip.color} 20%, transparent)`; e.currentTarget.style.borderColor = `color-mix(in srgb, ${chip.color} 31%, transparent)`; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = `color-mix(in srgb, ${chip.color} 6%, transparent)`; e.currentTarget.style.borderColor = `color-mix(in srgb, ${chip.color} 19%, transparent)`; }}
                 >
                   <span style={{ fontSize: 13 }}>{chip.icon}</span>{chip.label}
                 </button>
@@ -501,15 +501,15 @@ export function TaskChatDrawer({ ctx, onClose }: Props) {
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12, color: 'var(--text-muted)' }}>
               <div style={{
                 width: 56, height: 56, borderRadius: 18,
-                background: 'linear-gradient(135deg, rgba(59,130,246,0.1), rgba(139,92,246,0.15))',
-                border: '1px solid rgba(139,92,246,0.2)',
+                background: 'linear-gradient(135deg, color-mix(in srgb, var(--brand-accent) 10%, transparent), color-mix(in srgb, var(--brand-accent) 15%, transparent))',
+                border: '1px solid color-mix(in srgb, var(--brand-accent) 20%, transparent)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                <MessageSquare size={24} color="#8b5cf6" style={{ opacity: 0.6 }} />
+                <MessageSquare size={24} color="var(--brand-accent)" style={{ opacity: 0.6 }} />
               </div>
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: 4 }}>
-                  Chat avec <span style={{ color: liaMode ? '#8b5cf6' : '#3b82f6' }}>{agentLabel}</span>
+                  Chat avec <span style={{ color: 'var(--brand-accent)' }}>{agentLabel}</span>
                 </div>
                 <div style={{ fontSize: '0.78rem', opacity: 0.7 }}>
                   Utilise les actions rapides ou pose une question
@@ -529,8 +529,8 @@ export function TaskChatDrawer({ ctx, onClose }: Props) {
               {chips.slice(0, 3).map((chip, i) => (
                 <button key={i} onClick={() => send(chip.prompt)} disabled={loading} style={{
                   padding: '3px 9px', borderRadius: 12,
-                  border: `1px solid ${chip.color}25`,
-                  background: `${chip.color}08`,
+                  border: `1px solid color-mix(in srgb, ${chip.color} 15%, transparent)`,
+                  background: `color-mix(in srgb, ${chip.color} 3%, transparent)`,
                   color: chip.color, fontSize: '10px', cursor: 'pointer', fontFamily: 'inherit',
                   display: 'flex', alignItems: 'center', gap: 4,
                 }}>
@@ -548,7 +548,7 @@ export function TaskChatDrawer({ ctx, onClose }: Props) {
             borderRadius: 14, padding: '8px 8px 8px 14px',
             transition: 'border-color 0.15s',
           }}
-            onFocusCapture={e => (e.currentTarget.style.borderColor = 'rgba(139,92,246,0.4)')}
+            onFocusCapture={e => (e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--brand-accent) 40%, transparent)')}
             onBlurCapture={e => (e.currentTarget.style.borderColor = 'var(--border-subtle)')}
           >
             <textarea
@@ -581,12 +581,12 @@ export function TaskChatDrawer({ ctx, onClose }: Props) {
             ) : (
               <button onClick={() => send()} disabled={!input.trim()} style={{
                 width: 32, height: 32, borderRadius: 9, border: 'none', flexShrink: 0,
-                background: input.trim() ? 'linear-gradient(135deg, var(--brand-accent), #6d28d9)' : 'transparent',
+                background: input.trim() ? 'var(--brand-accent)' : 'transparent',
                 color: input.trim() ? '#fff' : 'var(--text-muted)',
                 cursor: input.trim() ? 'pointer' : 'default',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 transition: 'all 0.2s',
-                boxShadow: input.trim() ? '0 2px 8px rgba(139,92,246,0.3)' : 'none',
+                boxShadow: 'none',
               }}>
                 <Send size={14} />
               </button>
@@ -745,12 +745,12 @@ export function ChatTriggerBtn({ ctx, onOpen, unread = 0 }: ChatBtnProps) {
       title={`Chat — ${ctx.taskName}`}
       style={{
         position: 'relative', width: 28, height: 28, borderRadius: 8, border: 'none',
-        background: 'rgba(139,92,246,0.1)', color: '#8b5cf6',
+        background: 'color-mix(in srgb, var(--brand-accent) 10%, transparent)', color: 'var(--brand-accent)',
         cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
         transition: 'all 0.15s', flexShrink: 0,
       }}
-      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.22)'; e.currentTarget.style.transform = 'scale(1.08)'; }}
-      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.1)'; e.currentTarget.style.transform = 'scale(1)'; }}
+      onMouseEnter={e => { e.currentTarget.style.background = 'color-mix(in srgb, var(--brand-accent) 22%, transparent)'; e.currentTarget.style.transform = 'scale(1.08)'; }}
+      onMouseLeave={e => { e.currentTarget.style.background = 'color-mix(in srgb, var(--brand-accent) 10%, transparent)'; e.currentTarget.style.transform = 'scale(1)'; }}
     >
       <MessageSquare size={13} />
       {unread > 0 && (

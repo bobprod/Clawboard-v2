@@ -76,13 +76,13 @@ const MODELS = [
     id: "claude-sonnet-4-6",
     label: "Claude Sonnet 4.6",
     provider: "Anthropic",
-    color: "#8b5cf6",
+    color: "var(--brand-accent)",
   },
   {
     id: "openrouter/anthropic/claude-sonnet-4.6",
     label: "Claude via OpenRouter",
     provider: "OpenRouter",
-    color: "#6366f1",
+    color: "var(--brand-accent)",
   },
   // ── NVIDIA NIM — Nemotron ───────────────────────────────────────────────────
   {
@@ -145,38 +145,38 @@ const MODELS = [
     id: "minimax/MiniMax-M2.7",
     label: "🔥 MiniMax M2.7",
     provider: "MiniMax",
-    color: "#6366f1",
+    color: "var(--brand-accent)",
   },
   {
     id: "minimax/MiniMax-M2.5",
     label: "⚡ MiniMax M2.5",
     provider: "MiniMax",
-    color: "#6366f1",
+    color: "var(--brand-accent)",
   },
   {
     id: "minimax/MiniMax-M1",
     label: "MiniMax M1",
     provider: "MiniMax",
-    color: "#6366f1",
+    color: "var(--brand-accent)",
   },
   // ── NVIDIA NIM — MiniMax ───────────────────────────────────────────────────
   {
     id: "minimaxai/minimax-m2.5",
     label: "MiniMax M2.5 (NIM)",
     provider: "NVIDIA NIM",
-    color: "#7c3aed",
+    color: "var(--brand-accent)",
   },
   {
     id: "minimaxai/minimax-m2.1",
     label: "MiniMax M2.1 (NIM)",
     provider: "NVIDIA NIM",
-    color: "#7c3aed",
+    color: "var(--brand-accent)",
   },
   {
     id: "minimaxai/minimax-m2",
     label: "MiniMax M2 (NIM)",
     provider: "NVIDIA NIM",
-    color: "#7c3aed",
+    color: "var(--brand-accent)",
   },
   // ── NVIDIA NIM — GLM (Z-AI / Zhipu) ───────────────────────────────────────
   {
@@ -196,19 +196,19 @@ const MODELS = [
     id: "moonshotai/kimi-k2.5",
     label: "⚡ Kimi K2.5 (Vision)",
     provider: "NVIDIA NIM",
-    color: "#3b82f6",
+    color: "var(--brand-accent)",
   },
   {
     id: "moonshotai/kimi-k2-instruct",
     label: "Kimi K2",
     provider: "NVIDIA NIM",
-    color: "#3b82f6",
+    color: "var(--brand-accent)",
   },
   {
     id: "moonshotai/kimi-k2-thinking",
     label: "Kimi K2 Thinking",
     provider: "NVIDIA NIM",
-    color: "#3b82f6",
+    color: "var(--brand-accent)",
   },
   // ── NVIDIA NIM — DeepSeek ─────────────────────────────────────────────────
   {
@@ -443,10 +443,10 @@ const TOOL_META: Record<
   string,
   { label: string; icon: React.ComponentType<{ size?: number }>; color: string }
 > = {
-  list_tasks: { label: "Tâches listées", icon: List, color: "#8b5cf6" },
-  get_task: { label: "Tâche consultée", icon: FileText, color: "#6366f1" },
+  list_tasks: { label: "Tâches listées", icon: List, color: "var(--brand-accent)" },
+  get_task: { label: "Tâche consultée", icon: FileText, color: "var(--brand-accent)" },
   create_task: { label: "Tâche créée", icon: Plus, color: "#10b981" },
-  start_task: { label: "Tâche démarrée", icon: Play, color: "#3b82f6" },
+  start_task: { label: "Tâche démarrée", icon: Play, color: "var(--brand-accent)" },
   delete_task: { label: "Tâche supprimée", icon: Trash, color: "#ef4444" },
   patch_task: { label: "Tâche modifiée", icon: RefreshCw, color: "#f59e0b" },
   list_modeles: { label: "Modèles listés", icon: Cpu, color: "#a855f7" },
@@ -1006,7 +1006,7 @@ const ModelSelector = ({
                 padding: "9px 12px",
                 borderRadius: 8,
                 background:
-                  model === m.id ? "rgba(139,92,246,0.12)" : "transparent",
+                  model === m.id ? "color-mix(in srgb, var(--brand-accent) 12%, transparent)" : "transparent",
                 border: "1px solid transparent",
                 cursor: "pointer",
                 color:
@@ -1067,7 +1067,7 @@ const EXEC_MODES: {
     id: "plan",
     label: "Plan",
     icon: <Eye size={13} />,
-    color: "#3b82f6",
+    color: "var(--brand-accent)",
     desc: "Planifie et attend votre validation",
   },
   {
@@ -1123,9 +1123,9 @@ const ExecutionModeSelector = ({
             fontSize: "0.78rem",
             fontWeight: 600,
             transition: "all 0.2s",
-            background: mode === m.id ? `${m.color}22` : "transparent",
+            background: mode === m.id ? `color-mix(in srgb, ${m.color} 13%, transparent)` : "transparent",
             color: mode === m.id ? m.color : "var(--text-muted)",
-            boxShadow: mode === m.id ? `0 0 0 1px ${m.color}55` : "none",
+            boxShadow: mode === m.id ? `0 0 0 1px color-mix(in srgb, ${m.color} 33%, transparent)` : "none",
           }}
         >
           {m.icon}
@@ -1273,7 +1273,7 @@ const ConversationHistory = ({
               gap: 6,
               padding: "10px 12px",
               background:
-                c.id === currentId ? "rgba(139,92,246,0.1)" : "transparent",
+                c.id === currentId ? "color-mix(in srgb, var(--brand-accent) 10%, transparent)" : "transparent",
               borderLeft:
                 c.id === currentId
                   ? "3px solid var(--brand-accent)"
@@ -1905,7 +1905,7 @@ export const ChatModule = () => {
                     width: "100%",
                     textAlign: "left",
                     padding: "10px 14px",
-                    background: !selectedAgentId ? "rgba(139,92,246,0.1)" : "transparent",
+                    background: !selectedAgentId ? "color-mix(in srgb, var(--brand-accent) 10%, transparent)" : "transparent",
                     border: "none",
                     borderBottom: "1px solid var(--border-subtle)",
                     cursor: "pointer",
@@ -2028,9 +2028,9 @@ export const ChatModule = () => {
               alignItems: "center",
               gap: 6,
               background: showPerms
-                ? "rgba(139,92,246,0.15)"
+                ? "color-mix(in srgb, var(--brand-accent) 15%, transparent)"
                 : "rgba(255,255,255,0.06)",
-              border: `1px solid ${showPerms ? "rgba(139,92,246,0.35)" : "var(--border-subtle)"}`,
+              border: `1px solid ${showPerms ? "color-mix(in srgb, var(--brand-accent) 35%, transparent)" : "var(--border-subtle)"}`,
               borderRadius: 20,
               padding: "6px 12px",
               cursor: "pointer",
@@ -2054,9 +2054,9 @@ export const ChatModule = () => {
             title="Historique des conversations"
             style={{
               background: showHistory
-                ? "rgba(139,92,246,0.15)"
+                ? "color-mix(in srgb, var(--brand-accent) 15%, transparent)"
                 : "rgba(255,255,255,0.05)",
-              border: `1px solid ${showHistory ? "rgba(139,92,246,0.35)" : "var(--border-subtle)"}`,
+              border: `1px solid ${showHistory ? "color-mix(in srgb, var(--brand-accent) 35%, transparent)" : "var(--border-subtle)"}`,
               borderRadius: 8,
               padding: "7px",
               cursor: "pointer",
@@ -2132,8 +2132,8 @@ export const ChatModule = () => {
                 transition: "all 0.2s",
               }}
               onMouseOver={(e) => {
-                e.currentTarget.style.background = "rgba(59,130,246,0.1)";
-                e.currentTarget.style.color = "#3b82f6";
+                e.currentTarget.style.background = "color-mix(in srgb, var(--brand-accent) 10%, transparent)";
+                e.currentTarget.style.color = "var(--brand-accent)";
               }}
               onMouseOut={(e) => {
                 e.currentTarget.style.background = "rgba(255,255,255,0.05)";
@@ -2186,8 +2186,8 @@ export const ChatModule = () => {
             <div
               style={{
                 alignSelf: "center",
-                background: "rgba(139,92,246,0.12)",
-                border: "1px solid rgba(139,92,246,0.25)",
+                background: "color-mix(in srgb, var(--brand-accent) 12%, transparent)",
+                border: "1px solid color-mix(in srgb, var(--brand-accent) 25%, transparent)",
                 borderRadius: 20,
                 padding: "5px 14px",
                 fontSize: "0.78rem",
@@ -2301,17 +2301,17 @@ export const ChatModule = () => {
                   padding: "6px 12px",
                   borderRadius: 20,
                   fontSize: "0.78rem",
-                  background: "rgba(139,92,246,0.1)",
-                  border: "1px solid rgba(139,92,246,0.25)",
+                  background: "color-mix(in srgb, var(--brand-accent) 10%, transparent)",
+                  border: "1px solid color-mix(in srgb, var(--brand-accent) 25%, transparent)",
                   color: "var(--brand-accent)",
                   cursor: "pointer",
                   transition: "all 0.2s",
                 }}
                 onMouseOver={(e) =>
-                  (e.currentTarget.style.background = "rgba(139,92,246,0.2)")
+                  (e.currentTarget.style.background = "color-mix(in srgb, var(--brand-accent) 20%, transparent)")
                 }
                 onMouseOut={(e) =>
-                  (e.currentTarget.style.background = "rgba(139,92,246,0.1)")
+                  (e.currentTarget.style.background = "color-mix(in srgb, var(--brand-accent) 10%, transparent)")
                 }
               >
                 {s}

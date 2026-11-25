@@ -103,7 +103,7 @@ interface SSEEvent {
 const statusColors: Record<string, string> = {
   active: "#10b981",
   paused: "#f59e0b",
-  completed: "#8b5cf6",
+  completed: "var(--brand-accent)",
   failed: "#ef4444",
 };
 
@@ -141,7 +141,7 @@ const pill = (color: string): React.CSSProperties => ({
   gap: "5px",
   padding: "3px 10px",
   borderRadius: "var(--radius-full, 999px)",
-  background: `${color}15`,
+  background: `color-mix(in srgb, ${color} 8%, transparent)`,
   color,
   fontSize: "11px",
   fontWeight: 600,
@@ -811,7 +811,7 @@ export const CoworkModule = () => {
             borderRadius: "8px",
             background:
               step.status === "in_progress"
-                ? "rgba(139,92,246,0.08)"
+                ? "color-mix(in srgb, var(--brand-accent) 8%, transparent)"
                 : step.status === "done"
                   ? "rgba(16,185,129,0.05)"
                   : "transparent",
@@ -820,7 +820,7 @@ export const CoworkModule = () => {
           {step.status === "done" ? (
             <CheckCircle2 size={16} color="#10b981" />
           ) : step.status === "in_progress" ? (
-            <Loader2 size={16} color="#8b5cf6" className="spin" />
+            <Loader2 size={16} color="var(--brand-accent)" className="spin" />
           ) : step.status === "skipped" ? (
             <XCircle size={16} color="#6b7280" />
           ) : (
@@ -893,7 +893,7 @@ export const CoworkModule = () => {
               sa.status === "completed"
                 ? "#10b981"
                 : sa.status === "running"
-                  ? "#8b5cf6"
+                  ? "var(--brand-accent)"
                   : "#ef4444",
             )}
           >
@@ -955,7 +955,7 @@ export const CoworkModule = () => {
             cursor: f.type === "file" ? "pointer" : "default",
             background:
               fileContent?.path === f.path
-                ? "rgba(139,92,246,0.08)"
+                ? "color-mix(in srgb, var(--brand-accent) 8%, transparent)"
                 : "transparent",
           }}
         >
@@ -1131,7 +1131,7 @@ export const CoworkModule = () => {
                   ev.type === "error"
                     ? "rgba(239,68,68,0.05)"
                     : ev.data?.role === "user"
-                      ? "rgba(139,92,246,0.05)"
+                      ? "color-mix(in srgb, var(--brand-accent) 5%, transparent)"
                       : "transparent",
               }}
             >
@@ -1295,7 +1295,7 @@ export const CoworkModule = () => {
                   : "var(--border-subtle)",
               background:
                 activeSession?.id === s.id
-                  ? "rgba(139,92,246,0.06)"
+                  ? "color-mix(in srgb, var(--brand-accent) 6%, transparent)"
                   : "var(--bg-glass)",
               transition: "all 0.15s",
             }}
@@ -1442,7 +1442,7 @@ export const CoworkModule = () => {
                   <span>•</span>
                   <span>${activeSession.cost.toFixed(4)}</span>
                   {activeSession.computerUseEnabled && (
-                    <span style={pill("#8b5cf6")}>
+                    <span style={pill("var(--brand-accent)")}>
                       <Monitor size={10} /> Computer Use
                     </span>
                   )}
@@ -1546,7 +1546,7 @@ export const CoworkModule = () => {
                     icon={Activity}
                     label="Progression"
                     value={`${activeSession.progress}%`}
-                    color="#8b5cf6"
+                    color="var(--brand-accent)"
                   />
                   <StatCard
                     icon={Zap}
@@ -1564,7 +1564,7 @@ export const CoworkModule = () => {
                     icon={BarChart3}
                     label="Coût"
                     value={`$${activeSession.cost.toFixed(4)}`}
-                    color="#3b82f6"
+                    color="var(--brand-accent)"
                   />
                   <StatCard
                     icon={FileText}
@@ -1693,8 +1693,8 @@ const StatCard = ({
 }) => (
   <div
     style={{
-      background: `${color}08`,
-      border: `1px solid ${color}20`,
+      background: `color-mix(in srgb, ${color} 3%, transparent)`,
+      border: `1px solid color-mix(in srgb, ${color} 13%, transparent)`,
       borderRadius: "10px",
       padding: "14px",
       display: "flex",
@@ -1707,7 +1707,7 @@ const StatCard = ({
         width: "36px",
         height: "36px",
         borderRadius: "10px",
-        background: `${color}15`,
+        background: `color-mix(in srgb, ${color} 8%, transparent)`,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",

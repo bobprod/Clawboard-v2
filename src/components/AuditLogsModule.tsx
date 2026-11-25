@@ -35,10 +35,10 @@ interface AuditLog {
 
 const ACTION_COLORS: Record<string, string> = {
   create: "#10b981",
-  update: "#3b82f6",
+  update: "var(--brand-accent)",
   delete: "#ef4444",
   run: "#f59e0b",
-  login: "#8b5cf6",
+  login: "var(--brand-accent)",
   approve: "#10b981",
   reject: "#ef4444",
 };

@@ -184,7 +184,7 @@ export function MemoryEngineWidget() {
           <span
             style={{
               ...pill,
-              background: "rgba(139,92,246,0.15)",
+              background: "color-mix(in srgb, var(--brand-accent) 15%, transparent)",
               color: "var(--brand-accent)",
             }}
           >
@@ -224,7 +224,7 @@ export function MemoryEngineWidget() {
               fontSize: 12,
               fontWeight: 600,
               background:
-                tab === t ? "rgba(139,92,246,0.2)" : "rgba(255,255,255,0.04)",
+                tab === t ? "color-mix(in srgb, var(--brand-accent) 20%, transparent)" : "rgba(255,255,255,0.04)",
               color:
                 tab === t ? "var(--brand-accent)" : "var(--text-secondary)",
               transition: "all 0.2s",
@@ -326,7 +326,7 @@ export function MemoryEngineWidget() {
             </div>
             <div>├─────────────────────────────────────────────┤</div>
             <div>
-              │ <span style={{ color: "#3b82f6" }}>L2 TOPICS</span> │ Fichiers
+              │ <span style={{ color: "var(--brand-accent)" }}>L2 TOPICS</span> │ Fichiers
               thématiques (chargés à la demande) │
             </div>
             <div>├─────────────────────────────────────────────┤</div>
@@ -358,7 +358,7 @@ export function MemoryEngineWidget() {
                 border: "none",
                 cursor: dreaming ? "wait" : "pointer",
                 background:
-                  "linear-gradient(135deg, rgba(139,92,246,0.2), rgba(59,130,246,0.2))",
+                  "color-mix(in srgb, var(--brand-accent) 20%, transparent)",
                 color: "var(--brand-accent)",
                 fontWeight: 600,
                 fontSize: 12,
@@ -412,7 +412,7 @@ export function MemoryEngineWidget() {
                           : a.type === "prune"
                             ? "#ef4444"
                             : a.type === "merge"
-                              ? "#3b82f6"
+                              ? "var(--brand-accent)"
                               : "#6b7280",
                       fontWeight: 600,
                     }}
@@ -535,7 +535,7 @@ export function MemoryEngineWidget() {
                 borderRadius: 8,
                 border: "none",
                 cursor: "pointer",
-                background: "rgba(139,92,246,0.2)",
+                background: "color-mix(in srgb, var(--brand-accent) 20%, transparent)",
                 color: "var(--brand-accent)",
                 fontWeight: 600,
                 fontSize: 12,
@@ -585,12 +585,12 @@ export function MemoryEngineWidget() {
               {/* Layer 2 results */}
               <LayerResults
                 label="L2 TOPICS"
-                color="#3b82f6"
+                color="var(--brand-accent)"
                 count={searchResults.topics.length}
               >
                 {searchResults.topics.map((t, i) => (
                   <div key={i} style={{ fontSize: 12 }}>
-                    <span style={{ color: "#3b82f6", fontWeight: 600 }}>
+                    <span style={{ color: "var(--brand-accent)", fontWeight: 600 }}>
                       {t.file}
                     </span>
                     <pre

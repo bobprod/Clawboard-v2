@@ -111,8 +111,8 @@ function PipelinePanel() {
 
   const NODE_COLORS: Record<string, string> = {
     trigger: "#10b981",
-    llm: "#8b5cf6",
-    tool: "#3b82f6",
+    llm: "var(--brand-accent)",
+    tool: "var(--brand-accent)",
     condition: "#f59e0b",
     output: "#ec4899",
   };
@@ -184,8 +184,8 @@ function PipelinePanel() {
               borderRadius: 8,
               background: saved
                 ? "rgba(16,185,129,0.15)"
-                : "rgba(139,92,246,0.15)",
-              border: `1px solid ${saved ? "rgba(16,185,129,0.4)" : "rgba(139,92,246,0.4)"}`,
+                : "color-mix(in srgb, var(--brand-accent) 15%, transparent)",
+              border: `1px solid ${saved ? "rgba(16,185,129,0.4)" : "color-mix(in srgb, var(--brand-accent) 40%, transparent)"}`,
               color: saved ? "#10b981" : "var(--brand-accent)",
               fontWeight: 600,
               fontSize: "12px",
@@ -385,12 +385,12 @@ const MODE_LABELS: Record<
   "run-if-idle": {
     label: "Si inactif",
     desc: "Seulement quand aucune tâche ne tourne",
-    color: "#3b82f6",
+    color: "var(--brand-accent)",
   },
   "run-if-not-run-since": {
     label: "Si non exécuté",
     desc: "Garantit une fraîcheur minimale",
-    color: "#8b5cf6",
+    color: "var(--brand-accent)",
   },
   "skip-if-last-run-within": {
     label: "Debounce",
@@ -585,9 +585,9 @@ export const SchedulerModule = () => {
           <div
             style={{
               padding: "12px",
-              background: "rgba(139,92,246,0.1)",
+              background: "color-mix(in srgb, var(--brand-accent) 10%, transparent)",
               borderRadius: "12px",
-              border: "1px solid rgba(139,92,246,0.2)",
+              border: "1px solid color-mix(in srgb, var(--brand-accent) 20%, transparent)",
             }}
           >
             <CalendarClock size={24} color="var(--brand-accent)" />
@@ -616,14 +616,13 @@ export const SchedulerModule = () => {
             padding: "10px 22px",
             background: showCreate
               ? "var(--bg-glass)"
-              : "linear-gradient(135deg, var(--brand-primary), var(--brand-accent))",
+              : "var(--brand-accent)",
             color: "var(--text-primary)",
             border: showCreate ? "1px solid var(--border-subtle)" : "none",
             borderRadius: "var(--radius-full)",
             cursor: "pointer",
             fontWeight: 600,
             fontSize: "0.9rem",
-            boxShadow: showCreate ? "none" : "0 4px 18px rgba(139,92,246,0.4)",
           }}
         >
           <Plus size={16} /> {showCreate ? "Annuler" : "Nouveau CRON"}
@@ -689,7 +688,7 @@ export const SchedulerModule = () => {
       {showCreate && (
         <div
           className="glass-panel p-6"
-          style={{ border: "1px solid rgba(139,92,246,0.3)" }}
+          style={{ border: "1px solid color-mix(in srgb, var(--brand-accent) 30%, transparent)" }}
         >
           <h3
             style={{
@@ -899,8 +898,7 @@ export const SchedulerModule = () => {
             onClick={handleCreate}
             style={{
               padding: "10px 28px",
-              background:
-                "linear-gradient(135deg, var(--brand-primary), var(--brand-accent))",
+              background: "var(--brand-accent)",
               color: "var(--text-primary)",
               border: "none",
               borderRadius: "var(--radius-full)",
@@ -1178,9 +1176,9 @@ export const SchedulerModule = () => {
                         display: "flex",
                         alignItems: "center",
                         padding: "8px 10px",
-                        background: "rgba(139,92,246,0.06)",
+                        background: "color-mix(in srgb, var(--brand-accent) 6%, transparent)",
                         color: "var(--brand-accent)",
-                        border: "1px solid rgba(139,92,246,0.15)",
+                        border: "1px solid color-mix(in srgb, var(--brand-accent) 15%, transparent)",
                         borderRadius: "10px",
                         cursor: "pointer",
                       }}
@@ -1197,10 +1195,10 @@ export const SchedulerModule = () => {
                         padding: "8px 16px",
                         background:
                           running === cron.id
-                            ? "rgba(59,130,246,0.1)"
-                            : "rgba(59,130,246,0.08)",
+                            ? "color-mix(in srgb, var(--brand-accent) 10%, transparent)"
+                            : "color-mix(in srgb, var(--brand-accent) 8%, transparent)",
                         color: "var(--brand-primary)",
-                        border: "1px solid rgba(59,130,246,0.2)",
+                        border: "1px solid color-mix(in srgb, var(--brand-accent) 20%, transparent)",
                         borderRadius: "10px",
                         cursor: "pointer",
                         fontWeight: 600,

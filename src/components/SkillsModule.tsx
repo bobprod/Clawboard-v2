@@ -384,9 +384,9 @@ export const SkillsModule = () => {
                   borderRadius: 12,
                   background:
                     selected?.id === skill.id
-                      ? "rgba(139,92,246,0.1)"
+                      ? "color-mix(in srgb, var(--brand-accent) 10%, transparent)"
                       : "var(--bg-glass)",
-                  border: `1px solid ${selected?.id === skill.id ? "rgba(139,92,246,0.4)" : "var(--border-subtle)"}`,
+                  border: `1px solid ${selected?.id === skill.id ? "color-mix(in srgb, var(--brand-accent) 40%, transparent)" : "var(--border-subtle)"}`,
                   cursor: "pointer",
                   transition: "all 0.15s",
                 }}
@@ -404,7 +404,7 @@ export const SkillsModule = () => {
                     <div
                       style={{
                         padding: 8,
-                        background: "rgba(139,92,246,0.12)",
+                        background: "color-mix(in srgb, var(--brand-accent) 12%, transparent)",
                         borderRadius: 8,
                       }}
                     >

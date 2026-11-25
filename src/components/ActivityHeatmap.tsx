@@ -24,10 +24,10 @@ function getIntensity(count: number, max: number): number {
 
 const INTENSITY_COLORS = [
   'rgba(255,255,255,0.04)', // 0 — vide
-  'rgba(139,92,246,0.15)',  // 1 — faible
-  'rgba(139,92,246,0.35)',  // 2 — moyen
-  'rgba(139,92,246,0.60)',  // 3 — élevé
-  'rgba(139,92,246,0.90)',  // 4 — max
+  'color-mix(in srgb, var(--brand-accent) 15%, transparent)',  // 1 — faible
+  'color-mix(in srgb, var(--brand-accent) 35%, transparent)',  // 2 — moyen
+  'color-mix(in srgb, var(--brand-accent) 60%, transparent)',  // 3 — élevé
+  'color-mix(in srgb, var(--brand-accent) 90%, transparent)',  // 4 — max
 ];
 
 const DAY_LABELS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
