@@ -20,6 +20,7 @@ import { TourGuide, resetTour } from "./components/TourGuide";
 import { LoginPage } from "./components/LoginPage";
 import { ToastProvider } from "./components/ToastProvider";
 import { PWAUpdateToast } from "./components/PWAUpdateToast";
+import { ImprovementsPage } from "./components/ImprovementsPage";
 
 interface ClawUser {
   username: string;
@@ -114,6 +115,7 @@ import {
   HardDrive,
   Layers,
   FolderKanban,
+  Lightbulb,
 } from "lucide-react";
 import "./index.css";
 import { GlobalChatProvider } from "./hooks/useGlobalChat";
@@ -455,6 +457,14 @@ const PageContent = () => {
             }
           />
           <Route
+            path="/improvements"
+            element={
+              <EB label="Améliorations">
+                <ImprovementsPage />
+              </EB>
+            }
+          />
+          <Route
             path="/memory"
             element={
               <EB label="Mémoire">
@@ -601,6 +611,9 @@ const Sidebar = ({
             tourId="nav-collaborations"
           >
             Collaborations
+          </NavLink>
+          <NavLink to="/improvements" icon={Lightbulb} tourId="nav-improvements">
+            Améliorations
           </NavLink>
 
           {/* ── OUTILS ── */}

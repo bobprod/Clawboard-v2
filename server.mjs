@@ -59,6 +59,11 @@ import { register as registerAudioRoutes } from "./routes/audio.mjs";
 import { register as registerSttRoutes } from "./routes/stt.mjs";
 import { register as registerObserveRoutes } from "./routes/observe.mjs";
 import { register as registerAgentStoreRoutes } from "./routes/agent-store.mjs";
+import {
+  register as registerImprovementsRoutes,
+  ensureImprovementTables,
+  scanImprovements,
+} from "./routes/improvements.mjs";
 import { createMcpSseHandler } from "./src/lib/mcp/server.mjs";
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
@@ -522,6 +527,13 @@ async function runPhase2Migration() {
   `,
     )
     .catch(() => {});
+
+  // Tables d'amélioration (agent_events → source de propositions) — idempotent
+  try {
+    await ensureImprovementTables({ pool });
+  } catch (e) {
+    logDb.warn("Tables d'amélioration ignorées", { error: e.message });
+  }
 
   logDb.info("Phase 2 migration OK");
 }
@@ -4391,6 +4403,7 @@ registerAudioRoutes(router);
 registerSttRoutes(router);
 registerObserveRoutes(router, routeCtx);
 registerAgentStoreRoutes(router, routeCtx);
+registerImprovementsRoutes(router, routeCtx);
 
 // ── MCP SSE endpoint (separate from router — uses its own handler) ──────────
 const { handler: mcpSseHandler } = createMcpSseHandler({ pool });
@@ -4568,6 +4581,35 @@ const server = http.createServer(async (req, res) => {
   res.end("Not found");
 });
 
+// ─── Job de détection des améliorations (pattern matching sur agent_events) ─────
+let improvementScanTimer = null;
+
+/**
+ * @returns {Promise<number>} nombre de propositions créées
+ */
+export async function runImprovementScanOnce({ pool: p = pool } = {}) {
+  try {
+    const { created } = await scanImprovements({ pool: p });
+    return created;
+  } catch (e) {
+    logDb.warn("Job d'amélioration échoué", { error: e.message });
+    return 0;
+  }
+}
+
+export function startImprovementScanJob({
+  intervalMs = Number(
+    process.env.CLAWBOARD_IMPROVEMENT_SCAN_INTERVAL || 6 * 60 * 60 * 1000,
+  ),
+} = {}) {
+  if (improvementScanTimer) return improvementScanTimer;
+  improvementScanTimer = setInterval(() => {
+    runImprovementScanOnce().catch(() => {});
+  }, intervalMs);
+  if (improvementScanTimer.unref) improvementScanTimer.unref();
+  return improvementScanTimer;
+}
+
 // ─── Startup ──────────────────────────────────────────────────────────────────
 
 async function startup() {
@@ -4597,6 +4639,8 @@ async function startup() {
     try { await seedIfEmpty();        } catch (e) { log.warn("Seed ignoré",            { error: e.message }); }
     try { await loadApiKeys();        } catch (e) { log.warn("API keys non chargées",  { error: e.message }); }
     try { await loadQuotas();         } catch (e) { log.warn("Quotas non chargés",     { error: e.message }); }
+    try { await runImprovementScanOnce(); } catch (e) { logDb.warn("Scan d'améliorations ignoré", { error: e.message }); }
+    try { startImprovementScanJob();  } catch (e) { logDb.warn("Job d'améliorations ignoré",    { error: e.message }); }
   }
 
   connectRedis().catch((err) =>
